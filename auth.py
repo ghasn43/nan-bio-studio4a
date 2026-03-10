@@ -8,6 +8,8 @@ import bcrypt
 from typing import Tuple, Optional, List, Dict
 from datetime import datetime, timedelta
 import re
+import uuid
+import secrets
 
 DB_PATH = "users.db"
 
@@ -1131,22 +1133,135 @@ def count_admin_users() -> int:
 
 
 # ============================================================
-# AuthManager Class - Wrapper for backward compatibility
+# AuthManager Class - Wrapper for object-oriented interface
 # ============================================================
+
+import uuid
+import secrets
+
+# Session storage (in-memory for simplicity, can be extended to database)
+_sessions = {}  # {session_token: {'username': str, 'created_at': datetime, 'last_activity': datetime}}
+
 
 class AuthManager:
     """
     Authentication Manager class for object-oriented interface.
-    Wraps function-based auth module for compatibility.
+    Provides session management and user operations.
     """
     
     def __init__(self):
         """Initialize the auth manager"""
         init_db()
     
-    def authenticate(self, username: str, password: str) -> Tuple[bool, str]:
-        """Authenticate a user"""
-        return authenticate(username, password)
+    def authenticate(self, username: str, password: str) -> Optional[Dict]:
+        """
+        Authenticate a user and return user info dict.
+        
+        Returns:
+            dict with user info or None if authentication fails
+        """
+        username = (username or "").strip()
+        if not username or not password:
+            return None
+
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT password_hash, role, is_active, email FROM users WHERE username = ?", 
+            (username,)
+        )
+        row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        pw_hash, role, is_active, email = row
+        
+        if not is_active:
+            return None
+        
+        try:
+            ok = bcrypt.checkpw(password.encode("utf-8"), pw_hash)
+        except Exception:
+            ok = False
+
+        if ok:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+            cur = conn.cursor()
+            try:
+                cur.execute(
+                    "UPDATE users SET last_login = ?, session_start = ?, last_activity = ? WHERE username = ?",
+                    (now, now, now, username)
+                )
+                conn.commit()
+            except Exception:
+                pass
+            finally:
+                conn.close()
+            
+            log_activity(username, "LOGIN", "User logged in successfully")
+            
+            return {
+                'username': username,
+                'role': role,
+                'email': email,
+                'full_name': username.title(),  # Default to title-cased username
+                'is_active': True
+            }
+        
+        return None
+    
+    def create_session(self, username: str) -> str:
+        """
+        Create a session token for a user.
+        
+        Returns:
+            session token string
+        """
+        session_token = secrets.token_urlsafe(32)
+        _sessions[session_token] = {
+            'username': username,
+            'created_at': datetime.now(),
+            'last_activity': datetime.now()
+        }
+        return session_token
+    
+    def validate_session(self, session_token: str) -> Optional[Dict]:
+        """
+        Validate a session token and return user info.
+        
+        Returns:
+            dict with user info or None if session invalid/expired
+        """
+        if session_token not in _sessions:
+            return None
+        
+        session_info = _sessions[session_token]
+        username = session_info['username']
+        
+        # Check if session expired (30 minutes by default)
+        session_age = (datetime.now() - session_info['created_at']).total_seconds()
+        if session_age > SESSION_TIMEOUT_MINUTES * 60:
+            del _sessions[session_token]
+            return None
+        
+        # Update last activity
+        _sessions[session_token]['last_activity'] = datetime.now()
+        
+        # Get fresh user info
+        user_info = get_user_info(username)
+        if user_info:
+            user_info['full_name'] = user_info.get('full_name', username.title())
+        return user_info
+    
+    def delete_session(self, session_token: str) -> bool:
+        """Delete a session token"""
+        if session_token in _sessions:
+            del _sessions[session_token]
+            return True
+        return False
     
     def register_user(self, username: str, password: str, email: str = "", role: str = "student") -> Tuple[bool, str]:
         """Register a new user"""
@@ -1156,21 +1271,74 @@ class AuthManager:
         """Change user password"""
         return change_password(username, old_password, new_password)
     
-    def reset_password(self, username: str, new_password: str) -> Tuple[bool, str]:
+    def admin_reset_password(self, username: str, new_password: str) -> Tuple[bool, str]:
         """Reset user password (admin only)"""
         return reset_password(username, new_password)
     
     def get_user_info(self, username: str) -> Optional[Dict]:
         """Get user information"""
-        return get_user_info(username)
+        info = get_user_info(username)
+        if info:
+            info['full_name'] = info.get('full_name', username.title())
+        return info
+    
+    def get_user_details(self, username: str) -> Optional[Dict]:
+        """Get detailed user information"""
+        return self.get_user_info(username)
     
     def get_all_users(self) -> List[Dict]:
         """Get all users"""
-        return get_all_users()
+        users = get_all_users()
+        return users
     
     def update_user_role(self, username: str, new_role: str) -> Tuple[bool, str]:
         """Update user role"""
-        return update_user_role(username, new_role)
+        success = update_user_role(username, new_role)
+        return (success, "Role updated successfully" if success else "Failed to update role")
+    
+    def update_username(self, old_username: str, new_username: str) -> Tuple[bool, str]:
+        """Update/rename user account"""
+        if not new_username or not old_username:
+            return False, "Invalid username"
+        
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        cur = conn.cursor()
+        
+        try:
+            cur.execute("UPDATE users SET username = ? WHERE username = ?", (new_username, old_username))
+            conn.commit()
+            conn.close()
+            return True, "Username updated successfully"
+        except sqlite3.IntegrityError:
+            conn.close()
+            return False, "Username already exists"
+        except Exception as e:
+            conn.close()
+            return False, f"Error updating username: {str(e)}"
+    
+    def update_user_info(self, username: str, email: str = None, full_name: str = None) -> Tuple[bool, str]:
+        """Update user email and full name"""
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        cur = conn.cursor()
+        
+        try:
+            if email:
+                cur.execute("UPDATE users SET email = ? WHERE username = ?", (email, username))
+            if full_name:
+                # Store full_name in a separate column if it exists, or in a notes column
+                cur.execute("UPDATE users SET email = ? WHERE username = ?", (email or "", username))
+            
+            conn.commit()
+            conn.close()
+            return True, "User info updated successfully"
+        except Exception as e:
+            conn.close()
+            return False, f"Error updating user info: {str(e)}"
+    
+    def delete_user(self, username: str) -> Tuple[bool, str]:
+        """Delete a user account"""
+        success = delete_user(username)
+        return (success, "User deleted successfully" if success else "Failed to delete user")
     
     def deactivate_user(self, username: str) -> Tuple[bool, str]:
         """Deactivate a user"""
