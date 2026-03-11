@@ -101,12 +101,33 @@ class DatasetBuilder:
         
         logger.info(f"Building dataset for task '{task_name}' with {len(df)} samples")
         
-        # Extract features
-        X = self.feature_builder.build_features(df, target_variable=target_variable)
+        # Check if this is already a feature-ready CSV (has numeric columns beyond IDs)
+        # vs a complex nested record structure (has composition columns)
+        has_complex_structure = any(col in df.columns for col in ['ionizable_lipid', 'helper_lipid', 'sterol', 'peg_lipid', 'ionizable_ratio'])
+        has_numeric_features = any(col in df.columns for col in ['Size_nm', 'PDI', 'Charge_mV', 'Encapsulation_%', 'Stability_%'])
+        
+        if has_numeric_features and not has_complex_structure:
+            # This is a feature-ready CSV - use columns directly
+            logger.info("Detected feature-ready CSV format - using columns directly")
+            numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+            non_numeric_cols = df.select_dtypes(exclude=['number']).columns.tolist()
+            
+            # Remove ID columns and target from features
+            exclude_cols = {'Batch_ID', 'experiment_id', 'formulation_id', 'assay_id', target_variable}
+            numeric_cols = [c for c in numeric_cols if c not in exclude_cols]
+            
+            X = df[numeric_cols].copy()
+            X = X.reset_index(drop=True)
+        else:
+            # Complex nested structure - use feature builder
+            X = self.feature_builder.build_features(df, target_variable=target_variable)
+            X = X.reset_index(drop=True)
         
         # Remove excluded features
         if exclude_features:
-            X = X.drop(columns=[col for col in exclude_features if col in X.columns])
+            valid_excludes = [col for col in exclude_features if col in X.columns]
+            if valid_excludes:
+                X = X.drop(columns=valid_excludes)
         
         # Ensure X is reset indexed to match y and df
         X = X.reset_index(drop=True)
