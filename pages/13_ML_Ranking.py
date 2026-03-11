@@ -64,7 +64,21 @@ def main():
         )
 
         if uploaded_file:
-            candidates_df = pd.read_csv(uploaded_file)
+            # Load candidate data with encoding error handling
+            try:
+                # Try UTF-8 first
+                candidates_df = pd.read_csv(uploaded_file, encoding='utf-8')
+            except UnicodeDecodeError:
+                try:
+                    # Try Latin-1 encoding
+                    candidates_df = pd.read_csv(uploaded_file, encoding='latin-1')
+                except UnicodeDecodeError:
+                    try:
+                        # Try ISO-8859-1
+                        candidates_df = pd.read_csv(uploaded_file, encoding='iso-8859-1')
+                    except UnicodeDecodeError:
+                        # Last resort: ignore encoding errors
+                        candidates_df = pd.read_csv(uploaded_file, encoding='utf-8', errors='ignore')
 
             st.subheader("Candidates Preview")
             st.dataframe(candidates_df, use_container_width=True)

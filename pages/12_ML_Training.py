@@ -70,8 +70,21 @@ def main():
         )
 
         if uploaded_file:
-            # Load and preview data
-            df = pd.read_csv(uploaded_file)
+            # Load and preview data with encoding error handling
+            try:
+                # Try UTF-8 first
+                df = pd.read_csv(uploaded_file, encoding='utf-8')
+            except UnicodeDecodeError:
+                try:
+                    # Try Latin-1 encoding
+                    df = pd.read_csv(uploaded_file, encoding='latin-1')
+                except UnicodeDecodeError:
+                    try:
+                        # Try ISO-8859-1
+                        df = pd.read_csv(uploaded_file, encoding='iso-8859-1')
+                    except UnicodeDecodeError:
+                        # Last resort: ignore encoding errors
+                        df = pd.read_csv(uploaded_file, encoding='utf-8', errors='ignore')
 
             st.subheader("Data Preview")
             st.dataframe(df.head(10), use_container_width=True)
