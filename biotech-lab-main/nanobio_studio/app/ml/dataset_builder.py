@@ -108,15 +108,27 @@ class DatasetBuilder:
         if exclude_features:
             X = X.drop(columns=[col for col in exclude_features if col in X.columns])
         
-        # Ensure X is reset indexed to match y
+        # Ensure X is reset indexed to match y and df
         X = X.reset_index(drop=True)
+        df = df.reset_index(drop=True)
+        y = y.reset_index(drop=True)
         
-        # Handle missing values in features
+        # Preserve metadata for traceability (construct before feature filtering)
+        metadata = pd.DataFrame()
+        if include_metadata:
+            for col in ['formulation_id', 'experiment_id', 'assay_id']:
+                if col in df.columns:
+                    metadata[col] = df[col].values
+        metadata = metadata.reset_index(drop=True)
+        
+        # Handle missing values in features - filter X, y, df, and metadata together
         if handle_missing == "drop":
             # Use integer positions to avoid index alignment issues
             valid_idx_pos = X.notna().all(axis=1).to_numpy()
             X = X[valid_idx_pos].reset_index(drop=True)
             y = y.iloc[valid_idx_pos].reset_index(drop=True)
+            df = df.iloc[valid_idx_pos].reset_index(drop=True)
+            metadata = metadata.iloc[valid_idx_pos].reset_index(drop=True) if len(metadata) > 0 else pd.DataFrame()
         elif handle_missing == "mean":
             numeric_cols = X.select_dtypes(include=['number']).columns
             X[numeric_cols] = X[numeric_cols].fillna(X[numeric_cols].mean())
@@ -127,14 +139,6 @@ class DatasetBuilder:
         # Check minimum samples
         if len(X) < 10:
             logger.warning(f"Very few samples ({len(X)}) for task '{task_name}'")
-        
-        # Preserve metadata for traceability
-        metadata = pd.DataFrame()
-        if include_metadata:
-            for col in ['formulation_id', 'experiment_id', 'assay_id']:
-                if col in df.columns:
-                    metadata[col] = df[col].values[:len(X)]
-        metadata = metadata.reset_index(drop=True)
         
         # Train/validation split
         n_samples = len(X)
