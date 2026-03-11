@@ -7,6 +7,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import os
+import sys
 import matplotlib.pyplot as plt
 from matplotlib.patches import Wedge
 from pathlib import Path
@@ -14,6 +15,9 @@ from datetime import datetime
 import json
 import random
 import base64
+
+# Add biotech-lab-main to sys.path to enable imports from that directory
+sys.path.insert(0, str(Path(__file__).parent / "biotech-lab-main"))
 
 from auth import (
     authenticate, get_all_users, update_user_role, get_user_role as auth_get_user_role,
