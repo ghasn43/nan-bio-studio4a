@@ -106,27 +106,38 @@ class DatasetBuilder:
         has_complex_structure = any(col in df.columns for col in ['ionizable_lipid', 'helper_lipid', 'sterol', 'peg_lipid', 'ionizable_ratio'])
         has_numeric_features = any(col in df.columns for col in ['Size_nm', 'PDI', 'Charge_mV', 'Encapsulation_%', 'Stability_%'])
         
+        logger.info(f"Dataset format detection: complex={has_complex_structure}, numeric={has_numeric_features}")
+        
         if has_numeric_features and not has_complex_structure:
             # This is a feature-ready CSV - use columns directly
             logger.info("Detected feature-ready CSV format - using columns directly")
             numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
-            non_numeric_cols = df.select_dtypes(exclude=['number']).columns.tolist()
+            logger.info(f"Found {len(numeric_cols)} numeric columns: {numeric_cols[:10]}")
             
             # Remove ID columns and target from features
             exclude_cols = {'Batch_ID', 'experiment_id', 'formulation_id', 'assay_id', target_variable}
             numeric_cols = [c for c in numeric_cols if c not in exclude_cols]
+            logger.info(f"After excluding {len(exclude_cols)} ID/target columns: {len(numeric_cols)} features remain")
+            
+            if len(numeric_cols) == 0:
+                raise ValueError(f"No numeric features found after excluding ID columns. Available: {df.select_dtypes(include=['number']).columns.tolist()}")
             
             X = df[numeric_cols].copy()
-            X = X.reset_index(drop=True)
+            logger.info(f"Extracted X with shape {X.shape}")
         else:
             # Complex nested structure - use feature builder
+            logger.info("Using feature builder for complex nested structure")
             X = self.feature_builder.build_features(df, target_variable=target_variable)
-            X = X.reset_index(drop=True)
+            logger.info(f"Feature builder returned X with shape {X.shape}")
+            
+            if X.shape[1] == 0:
+                raise ValueError(f"Feature builder returned no features. Check data structure or feature builder configuration.")
         
-        # Remove excluded features
+        # Remove excluded features (after feature building)
         if exclude_features:
             valid_excludes = [col for col in exclude_features if col in X.columns]
             if valid_excludes:
+                logger.info(f"Excluding {len(valid_excludes)} features: {valid_excludes}")
                 X = X.drop(columns=valid_excludes)
         
         # Ensure X is reset indexed to match y and df
@@ -140,7 +151,15 @@ class DatasetBuilder:
             for col in ['formulation_id', 'experiment_id', 'assay_id']:
                 if col in df.columns:
                     metadata[col] = df[col].values
+        
+        logger.info(f"Metadata shape before filtering: {metadata.shape}")
+        
+        # If metadata is completely empty, ensure it has the right number of rows
+        if len(metadata) == 0 and len(df) > 0:
+            metadata = pd.DataFrame(index=range(len(df)))
+        
         metadata = metadata.reset_index(drop=True)
+        logger.info(f"Metadata shape after reset: {metadata.shape}")
         
         # Handle missing values in features - filter X, y, df, and metadata together
         if handle_missing == "drop":
