@@ -20,6 +20,11 @@ from nanobio_studio.app.ml.schemas import (
     DatasetBuildRequest,
     TrainRequest,
 )
+from nanobio_studio.app.ml.task_profiles import (
+    get_profile_choices,
+    get_profile_descriptions,
+    apply_profile,
+)
 from nanobio_studio.app.auth import Permission
 from nanobio_studio.app.ui.streamlit_auth import (
     require_login,
@@ -91,59 +96,128 @@ def main():
 
             st.info(f"Rows: {len(df)} | Columns: {len(df.columns)}")
 
+            # Quick Start with Profiles
+            st.subheader("⚡ Quick Start with Predefined Profiles")
+            
+            profile_names = get_profile_choices()
+            profile_descriptions = get_profile_descriptions()
+            
+            # Create selectbox with descriptions
+            selected_profile = st.selectbox(
+                "Select a Task Profile",
+                options=profile_names,
+                index=0,  # Default to toxicity_prediction
+                format_func=lambda x: f"{x.replace('_', ' ').title()} - {profile_descriptions[x]}",
+                help="Choose a predefined configuration for your ML task",
+                key="profile_selector"
+            )
+            
+            # Show profile details
+            with st.expander("📋 Profile Information", expanded=False):
+                profile_desc = profile_descriptions[selected_profile]
+                st.write(f"**Description:** {profile_desc}")
+            
+            # Apply profile button
+            if st.button("Apply Profile Settings", key="apply_profile_btn", type="primary"):
+                try:
+                    config, excludes, target = apply_profile(selected_profile, df)
+                    st.session_state.profile_config = config
+                    st.session_state.profile_excludes = excludes
+                    st.session_state.profile_target = target
+                    st.success(f"✅ Applied profile: **{selected_profile}**")
+                    st.info(f"Target: **{target}** | Excluding: **{', '.join(excludes) if excludes else 'None'}**")
+                except Exception as e:
+                    st.error(f"Error applying profile: {str(e)}")
+            
+            st.divider()
+            
             # Dataset configuration
-            st.subheader("Dataset Configuration")
+            st.subheader("📊 Dataset Configuration")
+            
+            # Use profile settings if available, otherwise defaults
+            use_profile = "profile_config" in st.session_state
+            profile_config = st.session_state.get("profile_config")
+            
+            if use_profile:
+                st.info("🎯 Using settings from applied profile")
+                col1, col2 = st.columns(2)
+                with col1:
+                    task_name = st.text_input(
+                        "Task Name",
+                        value=profile_config.task_name,
+                        help="Unique identifier for this task",
+                    )
+                with col2:
+                    task_type = profile_config.task_type.value
+                    st.selectbox(
+                        "Task Type",
+                        options=[profile_config.task_type.value],
+                        disabled=True,
+                        help="Auto-set from profile",
+                    )
+            else:
+                col1, col2 = st.columns(2)
+                with col1:
+                    task_name = st.text_input(
+                        "Task Name",
+                        value="custom_task",
+                        help="Unique identifier for this task",
+                    )
+                with col2:
+                    task_type = st.selectbox(
+                        "Task Type",
+                        options=[
+                            "predict_particle_size",
+                            "predict_pdi",
+                            "predict_toxicity",
+                            "predict_uptake",
+                            "predict_transfection",
+                            "classify_toxicity_band",
+                            "classify_uptake_band",
+                            "classify_qc_pass",
+                        ],
+                        help="Select the specific ML prediction task",
+                    )
 
             col1, col2 = st.columns(2)
 
             with col1:
-                task_name = st.text_input(
-                    "Task Name",
-                    value="toxicity_prediction",
-                    help="Unique identifier for this task",
-                )
-
-            with col2:
-                task_type = st.selectbox(
-                    "Task Type",
-                    options=[
-                        "predict_particle_size",
-                        "predict_pdi",
-                        "predict_toxicity",
-                        "predict_uptake",
-                        "predict_transfection",
-                        "classify_toxicity_band",
-                        "classify_uptake_band",
-                        "classify_qc_pass",
-                    ],
-                    help="Select the specific ML prediction task",
-                )
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                target_variable = st.selectbox(
-                    "Target Variable",
-                    options=df.columns,
-                    help="Column to predict",
-                )
+                if use_profile:
+                    target_variable = st.selectbox(
+                        "Target Variable",
+                        options=df.columns,
+                        index=df.columns.tolist().index(st.session_state.profile_target) if st.session_state.profile_target in df.columns else 0,
+                        help="Column to predict (auto-set from profile)",
+                    )
+                else:
+                    target_variable = st.selectbox(
+                        "Target Variable",
+                        options=df.columns,
+                        help="Column to predict",
+                    )
 
             with col2:
                 test_split = st.slider(
                     "Test Split Ratio",
                     min_value=0.1,
                     max_value=0.5,
-                    value=0.2,
+                    value=0.2 if not use_profile else profile_config.test_split,
                     step=0.05,
                 )
 
             # Feature selection
             st.subheader("Feature Selection")
 
+            default_excludes = []
+            if "profile_excludes" in st.session_state:
+                default_excludes = st.session_state.profile_excludes
+                st.info(f"✓ Profile recommends excluding: **{', '.join(default_excludes)}**")
+
             exclude_columns = st.multiselect(
                 "Columns to Exclude",
                 options=df.columns,
-                help="Columns to exclude from training",
+                default=default_excludes,
+                help="Columns to exclude from training (profile recommendations shown above)",
             )
 
             # Build button
@@ -175,12 +249,17 @@ def main():
                             st.metric("Features", dataset["n_features"])
 
                         with col3:
-                            st.metric("Train/Validation", f"{len(dataset['X_train'])}/{len(dataset['X_valid'])}")
+                            st.metric("Train/Validation Split", f"{len(dataset['X_train'])}/{len(dataset['X_valid'])}")
 
                         # Store in session state
                         st.session_state.dataset = dataset
                         st.session_state.dataset_config = config
                         st.session_state.raw_dataframe = df  # Store original dataframe for training
+                        
+                        # Show dataset summary
+                        with st.expander("📊 Dataset Summary", expanded=True):
+                            st.write("**Features Used:**")
+                            st.write(dataset.get("feature_names", []))
 
                 except Exception as e:
                     st.error(f"Error: {str(e)}")

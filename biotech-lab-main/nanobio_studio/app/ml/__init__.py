@@ -34,6 +34,13 @@ from .predict import ModelPredictor
 from .ranker import CandidateRanker
 from .exporters import DatasetExporter, RankingResultExporter
 from .persistence import ModelPersistence
+from .task_profiles import (
+    TaskProfile,
+    get_profile,
+    get_profile_choices,
+    get_profile_descriptions,
+    apply_profile,
+)
 
 __all__ = [
     "MLTaskConfig",
@@ -53,4 +60,9 @@ __all__ = [
     "DatasetExporter",
     "RankingResultExporter",
     "ModelPersistence",
+    "TaskProfile",
+    "get_profile",
+    "get_profile_choices",
+    "get_profile_descriptions",
+    "apply_profile",
 ]
