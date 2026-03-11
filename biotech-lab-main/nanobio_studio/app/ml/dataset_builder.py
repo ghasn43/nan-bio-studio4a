@@ -90,8 +90,11 @@ class DatasetBuilder:
         # Handle missing targets
         if handle_missing == "drop":
             valid_idx = y.notna()
-            df = df[valid_idx]
-            y = y[valid_idx]
+            df = df[valid_idx].reset_index(drop=True)
+            y = y[valid_idx].reset_index(drop=True)
+        else:
+            df = df.reset_index(drop=True)
+            y = y.reset_index(drop=True)
         
         if len(y) == 0:
             raise ValueError(f"No valid samples for task '{task_name}'")
@@ -105,11 +108,15 @@ class DatasetBuilder:
         if exclude_features:
             X = X.drop(columns=[col for col in exclude_features if col in X.columns])
         
+        # Ensure X is reset indexed to match y
+        X = X.reset_index(drop=True)
+        
         # Handle missing values in features
         if handle_missing == "drop":
-            valid_idx = X.notna().all(axis=1)
-            X = X[valid_idx]
-            y = y[valid_idx]
+            # Use integer positions to avoid index alignment issues
+            valid_idx_pos = X.notna().all(axis=1).to_numpy()
+            X = X[valid_idx_pos].reset_index(drop=True)
+            y = y.iloc[valid_idx_pos].reset_index(drop=True)
         elif handle_missing == "mean":
             numeric_cols = X.select_dtypes(include=['number']).columns
             X[numeric_cols] = X[numeric_cols].fillna(X[numeric_cols].mean())
@@ -126,7 +133,8 @@ class DatasetBuilder:
         if include_metadata:
             for col in ['formulation_id', 'experiment_id', 'assay_id']:
                 if col in df.columns:
-                    metadata[col] = df[col].values
+                    metadata[col] = df[col].values[:len(X)]
+        metadata = metadata.reset_index(drop=True)
         
         # Train/validation split
         n_samples = len(X)
