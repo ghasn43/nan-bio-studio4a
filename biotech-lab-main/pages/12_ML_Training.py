@@ -171,28 +171,37 @@ def main():
         st.header("🤖 Train Models")
 
         if "dataset" not in st.session_state:
-            st.info("👈 Please build a dataset first in the Dataset Builder tab")
-            return
+            st.warning("⚠️ No dataset found!")
+            st.info("👈 Please build a dataset first in the **Dataset Builder** tab, then come back here to train models.")
+            st.stop()
 
-        uploaded_file = st.file_uploader(
-            "Upload data for training (CSV)",
-            type=["csv"],
-            key="train_upload",
-        )
-
-        if uploaded_file:
-            df = pd.read_csv(uploaded_file)
-
-            st.subheader("Training Configuration")
-
+        # Use the dataset from session_state
+        dataset = st.session_state.dataset
+        dataset_config = st.session_state.dataset_config
+        
+        st.success(f"✅ Using dataset: **{dataset_config.task_name}**")
+        st.info(f"📊 Data: {dataset['n_samples']} samples, {dataset['n_features']} features | Train: {len(dataset['X_train'])}, Validation: {len(dataset['X_valid'])}")
+        
+        with st.expander("📋 Dataset Details", expanded=False):
             col1, col2 = st.columns(2)
-
             with col1:
-                model_types = st.multiselect(
-                    "Select Model Types",
-                    options=["linear_regression", "random_forest", "gradient_boosting", "svm"],
-                    default=["linear_regression", "random_forest"],
-                    help="Models to train",
+                st.metric("Task Name", dataset_config.task_name)
+                st.metric("Target Variable", dataset_config.target_variable)
+            with col2:
+                st.metric("Total Samples", dataset['n_samples'])
+                st.metric("Features Used", dataset['n_features'])
+        
+        st.divider()
+        st.subheader("🎛️ Training Configuration")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            model_types = st.multiselect(
+                "Select Model Types",
+                options=["linear_regression", "random_forest", "gradient_boosting", "svm"],
+                default=["linear_regression", "random_forest"],
+                help="Models to train",
                 )
 
             with col2:
@@ -234,7 +243,8 @@ def main():
                             artifact_name=artifact_name,
                         )
 
-                        response = ml_service.train_models(df, request)
+                        # Use the built dataset from session_state
+                        response = ml_service.train_models(dataset, request)
 
                         st.success("✅ Training complete!")
 
