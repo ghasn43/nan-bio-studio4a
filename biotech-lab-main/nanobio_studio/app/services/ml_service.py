@@ -7,6 +7,8 @@ training, evaluation, and ranking.
 
 import logging
 from typing import Dict, List, Optional
+import uuid
+from datetime import datetime
 import pandas as pd
 from ..ml.dataset_builder import DatasetBuilder
 from ..ml.feature_builder import FeatureBuilder
@@ -22,6 +24,8 @@ from ..ml.schemas import (
     TrainResponse,
     RankingRequest,
 )
+from ..db.database import DatabaseManager
+from ..db.models import TrainedModel
 
 
 logger = logging.getLogger(__name__)
@@ -171,6 +175,46 @@ class MLService:
             evaluation_summaries=evaluation_summaries,
             artifact_path=artifact_path,
         )
+        
+        # Save training record to database for persistence
+        try:
+            db_manager = DatabaseManager()
+            
+            # Get best model metrics
+            best_train_metrics = None
+            best_valid_metrics = None
+            for summary in evaluation_summaries:
+                if summary.best_model:
+                    best_train_metrics = summary.train_metrics.dict()
+                    best_valid_metrics = summary.validation_metrics.dict()
+                    break
+            
+            # Create TrainedModel record
+            trained_model = TrainedModel(
+                id=str(uuid.uuid4()),
+                task_name=config.task_name,
+                model_type=str(best_model_type),
+                task_type=str(config.task_type),
+                target_variable=config.target_variable,
+                created_at=datetime.utcnow(),
+                n_training_samples=dataset['n_samples'],
+                n_features=dataset['n_features'],
+                train_score=best_train_metrics.get('r2') if best_train_metrics else None,
+                validation_score=best_valid_metrics.get('r2') if best_valid_metrics else None,
+                model_path=artifact_path or '',
+                preprocessing_path=None,
+                task_config=config.dict(),
+                evaluation_summary={
+                    'train': best_train_metrics,
+                    'validation': best_valid_metrics,
+                },
+                metadata_json={'artifact_name': request.artifact_name},
+            )
+            
+            db_manager.model_repo.create(trained_model)
+            logger.info(f"Saved training record to database: {config.task_name}")
+        except Exception as e:
+            logger.warning(f"Could not save training record to database: {e}")
         
         logger.info(f"Training complete for '{config.task_name}'")
         return response

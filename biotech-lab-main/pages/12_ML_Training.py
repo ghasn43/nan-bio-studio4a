@@ -387,26 +387,89 @@ def main():
     with tab3:
         st.header("📚 Training History")
 
-        if "last_training" in st.session_state:
-            response = st.session_state.last_training
+        try:
+            from nanobio_studio.app.db.database import DatabaseManager
+            
+            db_manager = DatabaseManager()
+            trained_models = db_manager.model_repo.get_all()
+            
+            if trained_models:
+                st.success(f"Found {len(trained_models)} trained model(s)")
+                
+                # Display as table first
+                with st.expander("📋 All Trained Models", expanded=True):
+                    models_data = []
+                    for model in trained_models:
+                        models_data.append({
+                            "Task": model.task_name,
+                            "Model Type": model.model_type,
+                            "Samples": model.n_training_samples,
+                            "Features": model.n_features,
+                            "Train R²": f"{model.train_score:.4f}" if model.train_score else "N/A",
+                            "Valid R²": f"{model.validation_score:.4f}" if model.validation_score else "N/A",
+                            "Created": model.created_at.strftime("%Y-%m-%d %H:%M:%S") if model.created_at else "N/A",
+                        })
+                    
+                    models_df = pd.DataFrame(models_data)
+                    st.dataframe(models_df, use_container_width=True)
+                
+                # Show detailed view for each model
+                st.subheader("📊 Model Details")
+                
+                for model in trained_models:
+                    with st.expander(f"{model.task_name} - {model.model_type}", expanded=False):
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.metric("Samples", model.n_training_samples)
+                            st.metric("Features", model.n_features)
+                        
+                        with col2:
+                            st.metric("Model Type", model.model_type)
+                            st.metric("Task Type", model.task_type.replace('predict_', '').replace('classify_', ''))
+                        
+                        with col3:
+                            st.metric("Train R²", f"{model.train_score:.4f}" if model.train_score else "N/A")
+                            st.metric("Valid R²", f"{model.validation_score:.4f}" if model.validation_score else "N/A")
+                        
+                        # Show evaluation details if available
+                        if model.evaluation_summary:
+                            st.write("**Detailed Metrics:**")
+                            if 'train' in model.evaluation_summary and model.evaluation_summary['train']:
+                                st.write("*Training Metrics:*")
+                                for key, value in model.evaluation_summary['train'].items():
+                                    if value is not None:
+                                        st.write(f"  • {key}: {value:.4f}" if isinstance(value, float) else f"  • {key}: {value}")
+                            
+                            if 'validation' in model.evaluation_summary and model.evaluation_summary['validation']:
+                                st.write("*Validation Metrics:*")
+                                for key, value in model.evaluation_summary['validation'].items():
+                                    if value is not None:
+                                        st.write(f"  • {key}: {value:.4f}" if isinstance(value, float) else f"  • {key}: {value}")
+                        
+                        st.caption(f"Created: {model.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') if model.created_at else 'Unknown'}")
+            else:
+                st.info("No training history yet. Train a model in the **Train Models** tab to get started!")
+        
+        except Exception as e:
+            st.error(f"Error loading training history: {str(e)}")
+            logger.error(f"Training history error: {e}")
+            st.info("Using in-session training history (will be lost on page refresh)")
+            
+            # Fallback to session state if database fails
+            if "last_training" in st.session_state:
+                response = st.session_state.last_training
+                st.subheader("Latest Training (In-Session)")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Task", response.task_name)
+                with col2:
+                    st.metric("Best Model", response.best_model_type)
+                with col3:
+                    st.metric("Features", response.n_features)
+            else:
+                st.warning("No training history available")
 
-            st.subheader("Latest Training")
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric("Task", response.task_name)
-
-            with col2:
-                st.metric("Best Model", response.best_model_type)
-
-            with col3:
-                st.metric("Features", response.n_features)
-
-            st.write("Use the ML Model Management page to view all trained models")
-
-        else:
-            st.info("No training history yet. Train a model to get started!")
 
 
 if __name__ == "__main__":
