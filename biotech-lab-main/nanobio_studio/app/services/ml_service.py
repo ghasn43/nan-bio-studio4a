@@ -177,7 +177,7 @@ class MLService:
 
     def _create_evaluation_summary(self, model_type, train_metrics, valid_metrics, best_model_type):
         """Helper to create evaluation summary"""
-        from .schemas import EvaluationSummary, MetricDict
+        from ..ml.schemas import EvaluationSummary, MetricDict
         
         return EvaluationSummary(
             model_type=model_type,
