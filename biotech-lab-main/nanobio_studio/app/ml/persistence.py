@@ -66,9 +66,20 @@ class ModelPersistence:
         bundle_name = f"{task_name}_{timestamp}"
         bundle_path = os.path.join(self.models_dir, f"{bundle_name}.pkl")
         
+        # Save preprocessing pipeline separately to avoid pickle class identity issues
+        preprocessing_path = bundle_path.replace('.pkl', '_preprocessor.pkl')
+        try:
+            if preprocessing_pipeline is not None:
+                joblib.dump(preprocessing_pipeline, preprocessing_path)
+                logger.info(f"Saved preprocessing pipeline to {preprocessing_path}")
+        except Exception as e:
+            logger.warning(f"Could not save preprocessing pipeline: {e}")
+            preprocessing_path = None
+        
+        # Bundle WITHOUT preprocessing_pipeline to avoid pickling issues
         bundle = {
             'model': model,
-            'preprocessing_pipeline': preprocessing_pipeline,
+            'preprocessing_pipeline_path': preprocessing_path,
             'task_config': task_config,
             'evaluation_summary': evaluation_summary,
             'feature_builder': feature_builder,
@@ -98,6 +109,19 @@ class ModelPersistence:
         
         bundle = joblib.load(bundle_path)
         logger.info(f"Loaded model bundle from {bundle_path}")
+        
+        # Load preprocessing pipeline separately if path is stored
+        preprocessing_path = bundle.get('preprocessing_pipeline_path')
+        if preprocessing_path and os.path.exists(preprocessing_path):
+            try:
+                bundle['preprocessing_pipeline'] = joblib.load(preprocessing_path)
+                logger.info(f"Loaded preprocessing pipeline from {preprocessing_path}")
+            except Exception as e:
+                logger.warning(f"Could not load preprocessing pipeline from {preprocessing_path}: {e}")
+                bundle['preprocessing_pipeline'] = None
+        elif 'preprocessing_pipeline' not in bundle:
+            bundle['preprocessing_pipeline'] = None
+        
         return bundle
 
     def list_available_models(self) -> List[Dict]:
