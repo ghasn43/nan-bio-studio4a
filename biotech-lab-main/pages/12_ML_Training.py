@@ -399,14 +399,32 @@ def main():
             db_url_str = str(db.engine.url)
             if "sqlite" in db_url_str:
                 db_file = db_url_str.replace("sqlite:///", "")
-                logger.info(f"Database file path: {db_file}")
+                cwd = os.getcwd()
+                logger.info(f"Current working directory: {cwd}")
+                logger.info(f"Database file path (relative): {db_file}")
+                
+                # Try absolute path
+                abs_db_path = os.path.abspath(db_file)
+                logger.info(f"Database file path (absolute): {abs_db_path}")
+                
                 if os.path.exists(db_file):
                     file_size = os.path.getsize(db_file)
-                    logger.info(f"Database file exists, size: {file_size} bytes")
+                    logger.info(f"✅ Database file EXISTS at relative path, size: {file_size} bytes")
+                elif os.path.exists(abs_db_path):
+                    file_size = os.path.getsize(abs_db_path)
+                    logger.info(f"✅ Database file EXISTS at absolute path, size: {file_size} bytes")
                 else:
-                    logger.warning(f"Database file does NOT exist at: {db_file}")
+                    logger.warning(f"❌ Database file NOT found at: {db_file} or {abs_db_path}")
+                    st.warning("⚠️ Database file not found - training history cannot persist")
             
             session = db.get_session()
+            
+            # Check row count before retrieving
+            from sqlalchemy import text
+            result = session.execute(text("SELECT COUNT(*) FROM trained_model"))
+            row_count = result.scalar()
+            logger.info(f"Training table has {row_count} rows")
+            
             model_repo = ModelRepository(session)
             trained_models = model_repo.get_all()
             

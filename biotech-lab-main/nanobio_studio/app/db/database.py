@@ -11,6 +11,12 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool, NullPool
 import os
 
+try:
+    import streamlit as st
+    HAS_STREAMLIT = True
+except ImportError:
+    HAS_STREAMLIT = False
+
 from .models import Base, Formulation, Assay, TrainedModel, ModelPrediction, RankingResult, Artifact
 
 
@@ -253,23 +259,45 @@ class ArtifactRepository:
 _db: Optional[Database] = None
 
 
+def _create_db_instance() -> Database:
+    """Create database instance - called by get_db()"""
+    db_url = os.getenv("DATABASE_URL")
+    
+    if not db_url:
+        # Use file-based SQLite in the current working directory
+        # Streamlit runs from the app root (biotech-lab-main)
+        db_url = "sqlite:///ml_module.db"  # Relative path - creates in current working dir
+        logger.info(f"Using relative database path: ml_module.db")
+    
+    logger.info(f"Creating database instance with URL: {db_url}")
+    db = Database(db_url)
+    db.init_db()
+    return db
+
+
 def get_db() -> Database:
-    """Get or create global database instance"""
+    """Get or create global database instance with Streamlit caching for persistence"""
     global _db
-    if _db is None:
-        # Get database URL from environment or use file-based default
-        db_url = os.getenv("DATABASE_URL")
-        
-        if not db_url:
-            # Use file-based SQLite in the current working directory
-            # Streamlit runs from the app root (biotech-lab-main)
-            db_url = "sqlite:///ml_module.db"  # Relative path - creates in current working dir
-            logger.info(f"Using relative database path: ml_module.db")
-        
-        logger.info(f"Database URL: {db_url}")
-        _db = Database(db_url)
-        _db.init_db()
-    return _db
+    
+    # If Streamlit is available, use caching to persist across reruns
+    if HAS_STREAMLIT:
+        try:
+            @st.cache_resource
+            def _get_cached_db():
+                return _create_db_instance()
+            
+            return _get_cached_db()
+        except Exception as e:
+            # Fallback if Streamlit caching fails
+            logger.warning(f"Streamlit cache unavailable, using global instance: {e}")
+            if _db is None:
+                _db = _create_db_instance()
+            return _db
+    else:
+        # Non-Streamlit usage - use simple global
+        if _db is None:
+            _db = _create_db_instance()
+        return _db
 
 
 def get_db_session() -> Session:

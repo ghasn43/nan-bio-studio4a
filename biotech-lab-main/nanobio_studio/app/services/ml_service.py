@@ -216,7 +216,12 @@ class MLService:
             
             model_repo = ModelRepository(session)
             saved_model = model_repo.create(trained_model)
+            
+            # Ensure data is flushed and committed to disk
+            session.flush()
+            db.engine.dispose()  # Dispose connections to ensure file is written
             session.close()
+            
             logger.info(f"✅ Saved training record to database: {config.task_name} (ID: {saved_model.id})")
         except Exception as e:
             logger.error(f"❌ Could not save training record to database: {e}", exc_info=True)
