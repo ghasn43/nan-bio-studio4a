@@ -272,12 +272,18 @@ def main():
                                 with col1:
                                     st.write("**Training Metrics**")
                                     for metric, value in summary.train_metrics.dict().items():
-                                        st.write(f"  {metric}: {value:.4f}")
+                                        if value is not None:
+                                            st.write(f"  {metric}: {value:.4f}")
+                                        else:
+                                            st.write(f"  {metric}: N/A")
 
                                 with col2:
                                     st.write("**Validation Metrics**")
                                     for metric, value in summary.validation_metrics.dict().items():
-                                        st.write(f"  {metric}: {value:.4f}")
+                                        if value is not None:
+                                            st.write(f"  {metric}: {value:.4f}")
+                                        else:
+                                            st.write(f"  {metric}: N/A")
 
                         if response.artifact_path:
                             st.success(f"📦 Model saved to: {response.artifact_path}")
