@@ -29,6 +29,11 @@ from rbac import (
     Permission, Role, ROLE_TAB_ACCESS, require_permission
 )
 from ui.styling import apply_css_profile
+from components.branding import (
+    render_brand_header, render_brand_footer, render_ip_notice, 
+    render_research_disclaimer, render_sidebar_branding, render_licensing_contact
+)
+from components.branding_config import APP_NAME, TAGLINE, COMPANY_NAME
 
 # ============================================================
 # SESSION PERSISTENCE - Keep user logged in across page refreshes
@@ -110,43 +115,20 @@ restore_active_session()
 # ============================================================
 
 # ============================================================
-# ⚠️ IMPORTANT DISCLAIMER (Expandable)
+# 🎨 BRANDED HEADER & BRANDING
 # ============================================================
-with st.expander("⚠️ IMPORTANT DISCLAIMER - Click to expand", expanded=False):
-    st.markdown("""
-    <div style='background-color:#fff3cd; border-left:5px solid #ffc107; padding:15px; margin-bottom:10px; border-radius:5px;'>
-    <h4 style='color:#856404; margin-top:0;'>⚠️ IMPORTANT NOTICE</h4>
-    <p style='color:#856404; margin-bottom:5px;'>
-    <strong>This application is for EDUCATIONAL AND RESEARCH PURPOSES ONLY.</strong>
-    </p>
-    <ul style='color:#856404; margin-top:5px;'>
-    <li>This tool is NOT intended for medical diagnosis, treatment, or clinical decision-making</li>
-    <li>Results and recommendations are based on computational models and may not reflect real-world outcomes</li>
-    <li>All nanoparticle designs should be validated through proper experimental procedures</li>
-    <li>Users assume full responsibility for any decisions made based on information from this tool</li>
-    <li>Consult with qualified professionals for medical or therapeutic applications</li>
-    </ul>
-    </div>
-    
-    <div style='background-color:#f8f9fa; border:1px solid #dee2e6; padding:12px; margin-top:10px; border-radius:4px;'>
-    <p style='color:#333; margin:0; font-weight:bold;'>
-    📋 <strong>INTELLECTUAL PROPERTY NOTICE</strong>
-    </p>
-    <p style='color:#333; margin:5px 0 0 0;'>
-    This application is the intellectual property of <strong>Experts Group FZE</strong>
-    </p>
-    <p style='color:#333; margin:2px 0;'>
-    📞 <strong>Mobile:</strong> 00 971 50 6690381
-    </p>
-    <p style='color:#333; margin:2px 0 0 0;'>
-    📧 <strong>Email:</strong> info@expertsgroup.me
-    </p>
-    </div>
-    
-    <p style='color:#856404; margin-top:10px; font-size:0.9em; text-align:center;'>
-    <strong>By using this application, you acknowledge and accept these limitations.</strong>
-    </p>
-    """, unsafe_allow_html=True)
+render_brand_header()
+render_sidebar_branding()
+
+# ============================================================
+# ⚠️ RESEARCH DISCLAIMER & IP NOTICE (Expandable)
+# ============================================================
+with st.expander("⚠️ IMPORTANT DISCLAIMER & IP NOTICE - Click to expand", expanded=False):
+    render_research_disclaimer()
+    st.markdown("")
+    render_ip_notice()
+    st.markdown("")
+    render_licensing_contact()
 
 # Check for optional dependencies
 try:
