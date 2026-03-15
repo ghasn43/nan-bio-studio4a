@@ -64,18 +64,18 @@ if params:
     
     with col1:
         st.markdown("### Size (nm)")
-        st.metric("Recommended Range", f"{params.size_range_min}-{params.size_range_max} nm")
-        st.write(f"Core: {params.core_size} nm")
+        st.metric("Recommended Range", f"{params.size_nm_min}-{params.size_nm_max} nm")
+        st.write(f"Core: {params.size_nm_optimal} nm")
     
     with col2:
         st.markdown("### Charge (mV)")
-        st.metric("Surface Charge", f"{params.surface_charge}")
+        st.metric("Surface Charge", f"{params.charge_value}")
         st.write("Optimized for liver targeting")
     
     with col3:
         st.markdown("### Surface Modification")
-        st.metric("PEG Coverage", f"{params.peg_percentage}%")
-        st.write(f"Ligand: {params.targeting_ligand}")
+        st.metric("PEG Coverage", f"{params.peg_coating_percent}%")
+        st.write(f"Ligand: {params.targeting_ligand.value}")
     
     st.markdown("---")
     
@@ -91,14 +91,14 @@ if params:
             "Degradation Time"
         ],
         "Value": [
-            f"{params.size_range_min}-{params.size_range_max} nm",
-            f"{params.surface_charge} mV",
-            f"{params.peg_percentage}%",
-            params.targeting_ligand,
-            f"{params.drug_loading_range_min}-{params.drug_loading_range_max}%",
-            f"{params.particle_degradation_time_min}-{params.particle_degradation_time_max} hours"
+            f"{params.size_nm_min}-{params.size_nm_max} nm",
+            f"{params.charge_value} mV",
+            f"{params.peg_coating_percent}%",
+            params.targeting_ligand.value,
+            f"{params.drug_loading_percent_min}-{params.drug_loading_percent_max}%",
+            f"{params.biodegradation_hours_min}-{params.biodegradation_hours_max} hours"
         ],
-        "Rationale": params.size_rationale[:100] + "..." if len(params.size_rationale) > 100 else params.size_rationale,
+        "Rationale": "Design specifications",
     }
     
     st.dataframe(param_table, use_container_width=True, hide_index=True)
@@ -108,9 +108,13 @@ if params:
     st.markdown("## Design Rationale")
     
     with st.expander("Why these parameters for this disease?", expanded=True):
-        st.write(params.size_rationale)
-        st.write(f"**Charge Strategy**: {params.charge_rationale}")
-        st.write(f"**Surface Modification**: {params.peg_rationale}")
+        st.write(f"""
+**Size Optimization:** {params.size_nm_min}-{params.size_nm_max}nm balances drug payload capacity with tissue penetration.
+
+**Charge Strategy:** {params.charge_value}mV optimizes liver targeting while minimizing RES uptake.
+
+**Surface Modification:** {params.peg_coating_percent}% PEG provides stealth coating and extended circulation time.
+        """)
     
     st.markdown("---")
     
@@ -182,7 +186,7 @@ if params:
     
     with st.expander("Technical Details - Size Optimization"):
         st.write(f"""
-        **Why {params.size_range_min}-{params.size_range_max} nm?**
+        **Why {params.size_nm_min}-{params.size_nm_max} nm?**
         
         - Large enough for drug payload: >50 nm
         - Small enough for tissue penetration: <150 nm
@@ -193,7 +197,7 @@ if params:
     
     with st.expander("Technical Details - Charge Optimization"):
         st.write(f"""
-        **Why {params.surface_charge} mV for {disease_name}?**
+        **Why {params.charge_value} mV for {disease_name}?**
         
         - Slightly negative/neutral charge promotes liver targeting
         - Positive charges cause kidney filtration
