@@ -7,7 +7,12 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import sys
-sys.path.insert(0, '..')
+import os
+
+# Add root directory to path to import live_data_orchestrator
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
 # Page config
 st.set_page_config(
