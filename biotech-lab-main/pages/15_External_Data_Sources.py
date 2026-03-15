@@ -10,8 +10,9 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add root and biotech-lab-main directories to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # Root directory for modules
+sys.path.insert(0, str(Path(__file__).parent.parent))  # biotech-lab-main for components
 
 from modules.data_integrations import (
     DataIntegrationOrchestrator,
