@@ -246,7 +246,10 @@ def main():
                               unsafe_allow_html=True)
                 
                 st.markdown(f"**Records:** {connector.record_count:,}")
-                st.markdown(f"**Updated:** {connector.last_updated.strftime('%H:%M:%S')}")
+                if connector.last_updated:
+                    st.markdown(f"**Updated:** {connector.last_updated.strftime('%H:%M:%S')}")
+                else:
+                    st.markdown("**Updated:** N/A")
     
     # System Information
     st.markdown("---")
