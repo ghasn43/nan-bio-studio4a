@@ -137,12 +137,15 @@ def render_page_title_with_branding(title, subtitle=None):
     """
     Render page title with consistent branding styling
     """
+    gray_color = BRAND_COLORS['gray']
+    subtitle_html = f'<p style="margin: 5px 0; color: {gray_color}; font-size: 14px;"><em>{subtitle}</em></p>' if subtitle else ''
+    
     st.markdown(
         f"""
         <div style="padding: 15px; background-color: {BRAND_COLORS['light']}; 
                     border-radius: 5px; margin: 10px 0;">
             <h1 style="margin: 0; color: {BRAND_COLORS['primary']};">{title}</h1>
-            {f'<p style="margin: 5px 0; color: {BRAND_COLORS[\"gray\"]}; font-size: 14px;"><em>{subtitle}</em></p>' if subtitle else ''}
+            {subtitle_html}
         </div>
         """,
         unsafe_allow_html=True
