@@ -10,8 +10,9 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-# Add parent directory to path
+# Add parent directory and biotech-lab-main to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent / "biotech-lab-main"))
 
 from modules.data_integrations import (
     DataIntegrationOrchestrator,
@@ -32,7 +33,7 @@ st.set_page_config(
 )
 
 # Import branding components
-from biotech-lab-main.components.branding import (
+from components.branding import (
     render_brand_header, render_sidebar_branding, render_brand_footer,
     render_page_title_with_branding
 )

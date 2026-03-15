@@ -32,7 +32,7 @@ st.set_page_config(
 )
 
 # Import branding components
-from biotech-lab-main.components.branding import (
+from components.branding import (
     render_brand_header, render_sidebar_branding, render_brand_footer,
     render_page_title_with_branding
 )
