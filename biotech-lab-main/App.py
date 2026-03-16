@@ -573,6 +573,29 @@ else:
         - Compare multiple trials
         - Export results
         """)
+        
+        st.markdown("---")
+        
+        st.markdown("## 🚀 Quick Start Examples")
+        st.markdown("Learn from pre-configured nanoparticle designs to see how different parameters affect performance:")
+        
+        # Create columns for example buttons
+        example_cols = st.columns(3)
+        
+        with example_cols[0]:
+            if st.button("💉 mRNA Vaccine", use_container_width=True, help="COVID-19 mRNA Vaccine Example"):
+                st.session_state.design.update(st.session_state.example_designs["COVID-19 mRNA Vaccine"])
+                st.success("✅ Loaded mRNA Vaccine example!")
+        
+        with example_cols[1]:
+            if st.button("🎯 Cancer Therapy", use_container_width=True, help="Cancer Drug Delivery Example"):
+                st.session_state.design.update(st.session_state.example_designs["Cancer Drug Delivery"])
+                st.success("✅ Loaded Cancer Therapy example!")
+        
+        with example_cols[2]:
+            if st.button("🧬 Gene Therapy", use_container_width=True, help="Gene Therapy Vector Example"):
+                st.session_state.design.update(st.session_state.example_designs["Gene Therapy Vector"])
+                st.success("✅ Loaded Gene Therapy example!")
 
 # ============================================================
 
