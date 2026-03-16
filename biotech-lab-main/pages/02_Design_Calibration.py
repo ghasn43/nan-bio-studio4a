@@ -124,9 +124,9 @@ with tab2:
         st.markdown("#### 📏 Particle Size (nm)")
         size_val = st.slider(
             "Size",
-            min_value=params.size_nm_min,
-            max_value=params.size_nm_max,
-            value=st.session_state.calibration_size,
+            min_value=int(params.size_nm_min),
+            max_value=int(params.size_nm_max),
+            value=int(st.session_state.calibration_size),
             step=1,
             label_visibility="collapsed",
             key="size_slider"
@@ -142,7 +142,7 @@ with tab2:
         charge_val = st.select_slider(
             "Charge",
             options=charge_options,
-            value=st.session_state.calibration_charge,
+            value=int(st.session_state.calibration_charge),
             label_visibility="collapsed",
             key="charge_slider"
         )
@@ -157,7 +157,7 @@ with tab2:
             "PEG",
             min_value=1.0,
             max_value=15.0,
-            value=st.session_state.calibration_peg,
+            value=float(st.session_state.calibration_peg),
             step=0.5,
             label_visibility="collapsed",
             key="peg_slider"
@@ -173,7 +173,7 @@ with tab2:
             "Drug Loading",
             min_value=float(params.drug_loading_percent_min),
             max_value=float(params.drug_loading_percent_max),
-            value=st.session_state.calibration_drug_loading,
+            value=float(st.session_state.calibration_drug_loading),
             step=1.0,
             label_visibility="collapsed",
             key="drug_loading_slider"
