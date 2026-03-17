@@ -427,6 +427,10 @@ if get_user_role() == Role.ADMIN:
 # Filter tabs based on user's role
 available_tabs = get_available_tabs(all_tabs)
 
+# Safety check: if no tabs available, use default tabs
+if not available_tabs:
+    available_tabs = ["🏠 Home", "🧱 Materials", "🎨 Design", "📈 Delivery"]
+
 # If current tab is not accessible, switch to Home
 if st.session_state.current_tab not in available_tabs and "🏠 Home" in available_tabs:
     st.session_state.current_tab = "🏠 Home"
@@ -482,22 +486,25 @@ div.navbar button.current-tab {
 </style>
 """, unsafe_allow_html=True)
 
-# Create navigation bar
-st.markdown('<div class="navbar">', unsafe_allow_html=True)
-cols = st.columns(len(available_tabs))
+# Create navigation bar with safety check
+if available_tabs and len(available_tabs) > 0:
+    st.markdown('<div class="navbar">', unsafe_allow_html=True)
+    cols = st.columns(len(available_tabs))
 
-for i, tab_name in enumerate(available_tabs):
-    with cols[i]:
-        # Determine if this is the current tab
-        is_current = st.session_state.current_tab == tab_name
-        button_label = tab_name
-        
-        if st.button(button_label, use_container_width=True, key=f"nav_{i}", 
-                    type="primary" if is_current else "secondary"):
-            st.session_state.current_tab = tab_name
-            st.rerun()
+    for i, tab_name in enumerate(available_tabs):
+        with cols[i]:
+            # Determine if this is the current tab
+            is_current = st.session_state.current_tab == tab_name
+            button_label = tab_name
+            
+            if st.button(button_label, use_container_width=True, key=f"nav_{i}", 
+                        type="primary" if is_current else "secondary"):
+                st.session_state.current_tab = tab_name
+                st.rerun()
 
-st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+else:
+    st.warning("⚠️ No tabs available. Please contact support.")
 
 # Set the current mode based on navigation
 mode = st.session_state.current_tab
