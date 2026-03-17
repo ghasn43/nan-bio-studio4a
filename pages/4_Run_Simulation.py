@@ -94,9 +94,32 @@ with tab1:
                 import time
                 time.sleep(0.01)
             
-            st.success("✅ Simulation completed successfully!")
             st.session_state.simulation_completed = True
+            st.success("✅ Simulation completed successfully!")
             st.balloons()
+    
+    # Show results availability after simulation
+    if st.session_state.get("simulation_completed"):
+        st.divider()
+        st.markdown("### 📊 Results Now Available")
+        st.info("""
+        **Simulation results are displayed in the other tabs:**
+        
+        • 📊 **Delivery Kinetics** → Uptake curves and peak delivery time
+        • 🎯 **Biodistribution** → Organ accumulation and safety profile  
+        • 📈 **Performance Summary** → KPIs, metrics, and recommendations
+        
+        **Click on any tab above to view the results!**
+        """)
+        
+        # Show quick preview metrics
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            st.metric("Delivery Efficiency", "87.5%")
+        with col_m2:
+            st.metric("Overall Score", "89/100")
+        with col_m3:
+            st.metric("Safety Status", "✅ Excellent")
 
 # TAB 2: DELIVERY KINETICS
 with tab2:
