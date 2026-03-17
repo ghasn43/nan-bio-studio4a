@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from pathlib import Path
 import sys
+import io
+import json
 
 # Ensure parent directory is on path for module imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -21,6 +23,115 @@ st.set_page_config(page_title="Trial History", layout="wide")
 if not st.session_state.get("logged_in"):
     st.warning("⚠️ Please log in first")
     st.switch_page("Login.py")
+
+# ============================================================
+# HELPER FUNCTIONS FOR EXPORT
+# ============================================================
+
+def generate_pdf_report(trial_id: str, details: dict) -> bytes:
+    """Generate a PDF report using reportlab"""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        
+        pdf_buffer = io.BytesIO()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#667eea'),
+            spaceAfter=6,
+            alignment=1
+        )
+        story.append(Paragraph(f"NanoBio Studio - Trial Report", title_style))
+        story.append(Paragraph(f"Trial ID: {trial_id}", styles['Normal']))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        story.append(Spacer(1, 12))
+        
+        # Summary section
+        story.append(Paragraph("Trial Summary", styles['Heading2']))
+        summary_data = [
+            ['Material', f"{details.get('Material', 'N/A')}"],
+            ['Size', f"{details.get('Size', 'N/A')} nm"],
+            ['Charge', f"{details.get('Charge', 'N/A')} mV"],
+            ['Encapsulation', f"{details.get('Encapsulation', 'N/A')}%"],
+        ]
+        summary_table = Table(summary_data, colWidths=[2*inch, 2*inch])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ]))
+        story.append(summary_table)
+        story.append(Spacer(1, 12))
+        
+        # Performance metrics
+        story.append(Paragraph("Performance Metrics", styles['Heading2']))
+        metrics_data = [
+            ['Metric', 'Value'],
+            ['Delivery Efficiency', f"{details.get('Delivery', 'N/A')}%"],
+            ['Toxicity Score', f"{details.get('Toxicity', 'N/A')}/10"],
+            ['Cost Score', f"{details.get('Cost', 'N/A')}/100"],
+            ['Overall Score', f"{details.get('Overall Score', 'N/A')}/100"],
+        ]
+        metrics_table = Table(metrics_data, colWidths=[2.5*inch, 1.5*inch])
+        metrics_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('BACKGROUND', (0, 1), (0, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ]))
+        story.append(metrics_table)
+        
+        # Build PDF
+        doc.build(story)
+        pdf_buffer.seek(0)
+        return pdf_buffer.getvalue()
+    except Exception as e:
+        st.error(f"Error generating PDF: {str(e)}")
+        return None
+
+
+def generate_json_export(trial_id: str, details: dict) -> str:
+    """Generate JSON export of trial data"""
+    return json.dumps({
+        "trial_id": trial_id,
+        "timestamp": datetime.now().isoformat(),
+        "details": details
+    }, indent=2)
+
+
+def generate_csv_export(trial_id: str, details: dict) -> str:
+    """Generate CSV export of trial data"""
+    csv_lines = [
+        "Trial Report - NanoBio Studio",
+        f"Trial ID,{trial_id}",
+        f"Generated,{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "",
+        "Parameter,Value",
+    ]
+    
+    for key, value in details.items():
+        csv_lines.append(f"{key},{value}")
+    
+    return "\n".join(csv_lines)
 
 st.title("📋 Trial History")
 st.caption("Step 4: View and manage all your nanoparticle design trials")
@@ -150,14 +261,32 @@ with tab2:
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("Export as JSON"):
-            st.info("Exporting trial data as JSON...")
+        json_data = generate_json_export(trial_id, details)
+        st.download_button(
+            label="📥 Export as JSON",
+            data=json_data,
+            file_name=f"{trial_id}_report.json",
+            mime="application/json"
+        )
     with col2:
-        if st.button("Export as CSV"):
-            st.info("Exporting trial parameters as CSV...")
+        csv_data = generate_csv_export(trial_id, details)
+        st.download_button(
+            label="📥 Export as CSV",
+            data=csv_data,
+            file_name=f"{trial_id}_report.csv",
+            mime="text/csv"
+        )
     with col3:
-        if st.button("Generate PDF Report"):
-            st.info("Generating comprehensive PDF report...")
+        pdf_data = generate_pdf_report(trial_id, details)
+        if pdf_data:
+            st.download_button(
+                label="📤 Download PDF Report",
+                data=pdf_data,
+                file_name=f"{trial_id}_report.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.warning("PDF generation requires reportlab. Install with: pip install reportlab")
 
 # TAB 3: PERFORMANCE TRENDS
 with tab3:
