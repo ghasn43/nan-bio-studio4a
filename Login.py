@@ -86,16 +86,17 @@ def main():
                 # Authenticate using the auth module
                 from auth import authenticate
                 
-                user = authenticate(username, password)
+                # authenticate returns (success: bool, role: Optional[str])
+                success, role = authenticate(username, password)
                 
-                if user:
+                if success:
                     # Set session state for both old and new systems
                     st.session_state.logged_in = True
                     st.session_state.username = username
-                    st.session_state.role = user.get("role", "viewer")
+                    st.session_state.role = role or "viewer"
                     
                     # Also set StreamlitAuth session
-                    StreamlitAuth.set_user(username, user.get("role", "viewer"))
+                    StreamlitAuth.set_user(username, role or "viewer")
                     
                     st.success(f"✅ Welcome {username}!")
                     
