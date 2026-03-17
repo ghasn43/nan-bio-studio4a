@@ -314,18 +314,19 @@ with tab4:
     
     # Create gauge chart
     fig = go.Figure(data=[go.Indicator(
-        mode="gauge+number",
+        mode="gauge+number+delta",
         value=overall,
         domain={"x": [0, 1], "y": [0, 1]},
         title={"text": "Design Success Score"},
+        delta={"reference": 80, "suffix": " vs target"},
         gauge={
-            "axis": {"range": [None, 100]},
+            "axis": {"range": [0, 100]},
             "bar": {"color": "darkblue"},
             "steps": [
-                {"range": [0, 30], "color": "lightgray", "label": "Poor"},
-                {"range": [30, 60], "color": "yellow", "label": "Fair"},
-                {"range": [60, 85], "color": "lightgreen", "label": "Good"},
-                {"range": [85, 100], "color": "green", "label": "Excellent"}
+                {"range": [0, 30], "color": "rgba(255, 100, 100, 0.3)"},
+                {"range": [30, 60], "color": "rgba(255, 200, 0, 0.3)"},
+                {"range": [60, 85], "color": "rgba(150, 255, 100, 0.3)"},
+                {"range": [85, 100], "color": "rgba(100, 255, 100, 0.3)"}
             ],
             "threshold": {
                 "line": {"color": "red", "width": 4},
@@ -335,7 +336,12 @@ with tab4:
         }
     )])
     
-    fig.update_layout(height=300, font={"size": 16})
+    fig.update_layout(
+        height=350,
+        font={"size": 14},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
     st.plotly_chart(fig, use_container_width=True)
     
     # Scoring breakdown
