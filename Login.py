@@ -54,8 +54,8 @@ def main():
         
         st.divider()
         
-        if st.button("→ Go to Main App", type="primary", use_container_width=True):
-            st.switch_page("pages/2_Home.py")
+        if st.button("→ Go to Disease Selection", type="primary", use_container_width=True):
+            st.switch_page("pages/0_Disease_Selection.py")
         
         st.info("Or use the browser back button to continue")
 
@@ -105,8 +105,8 @@ def main():
                     
                     time.sleep(0.5)
                     
-                    # Redirect to main app - use pages/ directory
-                    st.switch_page("pages/2_Home.py")
+                    # Redirect to disease selection page after login
+                    st.switch_page("pages/0_Disease_Selection.py")
                 else:
                     st.error("❌ Invalid username or password")
 
