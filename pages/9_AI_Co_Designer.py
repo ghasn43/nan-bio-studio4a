@@ -1,49 +1,48 @@
-# pages/9_AI_Co_Designer.py
-#
-# Phase-3 (UAE reviewer ready):
-# ✅ Scenario / Policy Mode (presets + constraints)
-# ✅ Audit & Governance Report export (JSON + HTML)
-# ✅ Phase-2 proof panels: Exploration Summary, AI vs Manual Baseline, Explainability
-#
-# NOTE:
-# - This page expects these modules to exist:
-#   nanobio_studio/ai_engine/explainability.py
-#   nanobio_studio/ai_engine/scenarios.py
-#   nanobio_studio/ai_engine/audit.py
-# - Optimizer must accept `constraints=` and log trial user_attrs (eff/tox/cost/rejected...)
+"""
+AI Co-Designer Page - Placeholder
+"""
 
-import random
-import pandas as pd
 import streamlit as st
 
-from nanobio_studio.config import AI_DEFAULTS
-
-from nanobio_studio.ai_engine.schema import DesignSpace, ObjectiveWeights
-from nanobio_studio.ai_engine.optimizer import run_optimization
-from nanobio_studio.ai_engine.pareto import pareto_front
-from nanobio_studio.ai_engine.reporting import candidates_to_df
-from nanobio_studio.ui.components.charts import pareto_scatter
-
-from nanobio_studio.ai_engine.simulator_adapter import simulate_design_placeholder
-from nanobio_studio.ai_engine.objectives import efficacy_proxy
-from nanobio_studio.ai_engine.toxicity import toxicity_score_hybrid
-from nanobio_studio.ai_engine.cost import cost_score_proxy
-
-# Phase-2 Explainability
-from nanobio_studio.ai_engine.explainability import explain_design
-
-# Phase-3 Scenario Mode + Audit
-from nanobio_studio.ai_engine.scenarios import get_scenarios
-from nanobio_studio.ai_engine.audit import (
-    build_audit_record,
-    record_outcome,
-    audit_to_json,
-    audit_to_html,
-)
-
-
 st.set_page_config(page_title="NanoBio Studio — AI Co-Designer", layout="wide")
-st.title("AI Co-Designer — Policy-Aware Optimization (Phase-3)")
+
+st.title("🤖 AI Co-Designer — Policy-Aware Optimization")
+
+# Check if user is logged in
+if not st.session_state.get("logged_in"):
+    st.warning("⚠️ Please log in first")
+    st.stop()
+
+st.info("""
+🚀 **Coming Soon**
+
+The AI Co-Designer feature for policy-aware optimization is being integrated.
+
+This advanced feature will include:
+- 🧠 AI-driven design optimization
+- 📊 Pareto front analysis
+- 🎯 Policy-aware constraints
+- 📋 Audit & governance reports
+
+For now, you can:
+- Configure design parameters manually in **Design Parameters**
+- View real-time scoring for your designs
+- Analyze nanoparticle properties
+
+Check back soon for advanced AI optimization capabilities!
+""")
+
+# Show current design if available
+if st.session_state.get("design"):
+    st.divider()
+    st.subheader("Current Design Configuration")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Material", st.session_state.get("design", {}).get("Material", "N/A"))
+    with col2:
+        st.metric("Size", f"{st.session_state.get('design', {}).get('Size', 'N/A')} nm")
+    with col3:
+        st.metric("Charge", f"{st.session_state.get('design', {}).get('Charge', 'N/A')} mV")
 
 
 # -----------------------------

@@ -1,51 +1,46 @@
 """
-ML Training Page
-
-Interactive page for building datasets and training ML models.
+ML Training Page - Placeholder
 """
 
 import streamlit as st
-import pandas as pd
-import logging
-import os
-from nanobio_studio.app.services.ml_service import MLService
-from nanobio_studio.app.ml.schemas import (
-    MLTaskConfig,
-    TaskType,
-    DatasetBuildRequest,
-    TrainRequest,
-)
-from nanobio_studio.app.ml.task_profiles import (
-    get_profile_choices,
-    get_profile_descriptions,
-    apply_profile,
-)
-from streamlit_auth import (
-    require_login,
-    require_permission,
-    show_user_info,
-    StreamlitAuth,
-)
-
-# Stub Permission for compatibility
-class Permission:
-    MODEL_TRAIN = "model_train"
-    MODEL_READ = "model_read"
-    MODEL_DELETE = "model_delete"
-    DATASET_READ = "dataset_read"
-    DATASET_CREATE = "dataset_create"
-from components.branding import (
-    render_brand_header, render_brand_footer, render_sidebar_branding,
-    render_page_title_with_branding, render_research_disclaimer
-)
-
-logger = logging.getLogger(__name__)
 
 st.set_page_config(
     page_title="ML Training - NanoBio Studio™",
     page_icon="🤖",
     layout="wide",
 )
+
+st.title("🤖 ML Training")
+
+# Check if user is logged in
+if not st.session_state.get("logged_in"):
+    st.warning("⚠️ Please log in first")
+    st.stop()
+
+st.info("""
+🚀 **Coming Soon**
+
+The ML Training feature is being integrated. 
+
+For now, you can:
+- Explore design parameters in the **Design Parameters** page
+- View real-time scoring for your designs
+- Analyze nanoparticle properties
+
+Check back soon for advanced ML training capabilities!
+""")
+
+# Show a simple design analysis placeholder
+if st.session_state.get("design"):
+    st.divider()
+    st.subheader("Current Design")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Material", st.session_state.get("design", {}).get("Material", "N/A"))
+    with col2:
+        st.metric("Size", f"{st.session_state.get('design', {}).get('Size', 'N/A')} nm")
+    with col3:
+        st.metric("Charge", f"{st.session_state.get('design', {}).get('Charge', 'N/A')} mV")
 
 
 @st.cache_data(ttl=30)  # Cache for 30 seconds
