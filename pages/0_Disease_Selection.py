@@ -101,8 +101,7 @@ with col2:
     if st.session_state.get("selected_disease") and st.session_state.get("selected_drug"):
         if st.button("Next: Design Parameters →", type="primary", use_container_width=True):
             st.session_state.disease_selected = True
-            st.success("Disease selected! Proceeding to design parameters...")
-            st.info("🎨 Design Parameters page coming next")
+            st.switch_page("pages/3_Design_Parameters.py")
     else:
         st.button("Next: Design Parameters →", disabled=True, use_container_width=True)
 
