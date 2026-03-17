@@ -70,7 +70,7 @@ def main():
         st.markdown("### Demo Credentials")
         st.info("""
         **Username:** admin  
-        **Password:** admin123  
+        **Password:** Admin@2024  
         
         Or sign up below →
         """)
