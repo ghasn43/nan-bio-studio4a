@@ -82,6 +82,52 @@ st.divider()
 
 tab1, tab2, tab3, tab4 = st.tabs(["🧬 Core Properties", "🎨 Surface & Chemistry", "🎯 Targeting", "📊 Scoring"])
 
+# Function to display gauge chart
+def display_score_gauge():
+    """Display the real-time design scoring gauge"""
+    impact = compute_impact(d)
+    overall = overall_score_from_impact(impact)
+    
+    fig = go.Figure(data=[go.Indicator(
+        mode="gauge+number+delta",
+        value=overall,
+        domain={"x": [0, 1], "y": [0, 1]},
+        title={"text": "Design Success Score"},
+        delta={"reference": 80, "suffix": " vs target"},
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "darkblue"},
+            "steps": [
+                {"range": [0, 30], "color": "rgba(255, 100, 100, 0.3)"},
+                {"range": [30, 60], "color": "rgba(255, 200, 0, 0.3)"},
+                {"range": [60, 85], "color": "rgba(150, 255, 100, 0.3)"},
+                {"range": [85, 100], "color": "rgba(100, 255, 100, 0.3)"}
+            ],
+            "threshold": {
+                "line": {"color": "red", "width": 4},
+                "thickness": 0.75,
+                "value": 85
+            }
+        }
+    )])
+    
+    fig.update_layout(
+        height=350,
+        font={"size": 14},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        st.markdown("### 📊 Score Metrics")
+        st.metric("Overall Score", f"{overall:.1f}/100")
+        st.metric("Delivery", f"{impact['Delivery']:.1f}/100")
+        st.metric("Toxicity", f"{impact['Toxicity']:.1f}/10")
+        st.metric("Cost Index", f"{impact['Cost']:.1f}/100")
+
 # TAB 1: CORE PROPERTIES
 with tab1:
     st.subheader("🧬 Core Material Properties")
@@ -176,8 +222,10 @@ with tab1:
             max_value=365,
             value=int(d.get("DegradationTime", 30)),
             step=5,
-        )
-
+        )    
+    st.divider()
+    st.markdown("### 🎯 Parameter Impact on Score")
+    display_score_gauge()
 # TAB 2: SURFACE & CHEMISTRY
 with tab2:
     st.subheader("🎨 Surface Modification & Chemistry")
@@ -249,6 +297,10 @@ with tab2:
             ["-OH (Hydroxyl)", "-COOH (Carboxyl)", "-NH2 (Amino)", "-SH (Thiol)"],
             default=d.get("FunctionalGroups", ["-COOH (Carboxyl)"])
         )
+    
+    st.divider()
+    st.markdown("### 🎯 Parameter Impact on Score")
+    display_score_gauge()
 
 # TAB 3: TARGETING
 with tab3:
@@ -303,61 +355,21 @@ with tab3:
         value=int(d.get("ReleasePredictability", 85)),
         step=5,
     )
+    
+    st.divider()
+    st.markdown("### 🎯 Parameter Impact on Score")
+    display_score_gauge()
 
 # TAB 4: SCORING & ANALYSIS
 with tab4:
-    st.subheader("📊 Real-Time Design Scoring")
+    st.subheader("📊 Design Performance Analysis")
     
-    # Compute scores
-    impact = compute_impact(d)
-    overall = overall_score_from_impact(impact)
-    
-    # Create gauge chart
-    fig = go.Figure(data=[go.Indicator(
-        mode="gauge+number+delta",
-        value=overall,
-        domain={"x": [0, 1], "y": [0, 1]},
-        title={"text": "Design Success Score"},
-        delta={"reference": 80, "suffix": " vs target"},
-        gauge={
-            "axis": {"range": [0, 100]},
-            "bar": {"color": "darkblue"},
-            "steps": [
-                {"range": [0, 30], "color": "rgba(255, 100, 100, 0.3)"},
-                {"range": [30, 60], "color": "rgba(255, 200, 0, 0.3)"},
-                {"range": [60, 85], "color": "rgba(150, 255, 100, 0.3)"},
-                {"range": [85, 100], "color": "rgba(100, 255, 100, 0.3)"}
-            ],
-            "threshold": {
-                "line": {"color": "red", "width": 4},
-                "thickness": 0.75,
-                "value": 85
-            }
-        }
-    )])
-    
-    fig.update_layout(
-        height=350,
-        font={"size": 14},
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Scoring breakdown
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Delivery Score", f"{impact['Delivery']:.1f}/100", delta=None)
-    with col2:
-        st.metric("Toxicity Score", f"{impact['Toxicity']:.1f}/10", delta=None)
-    with col3:
-        st.metric("Cost Index", f"{impact['Cost']:.1f}/100", delta=None)
+    display_score_gauge()
     
     st.divider()
     
     # Recommendations
-    st.markdown("### 💡 Recommendations")
+    st.markdown("### 💡 Smart Recommendations")
     recommendations = get_recommendations(d)
     
     for rec in recommendations:
