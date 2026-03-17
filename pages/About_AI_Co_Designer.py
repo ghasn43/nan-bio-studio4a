@@ -1,138 +1,42 @@
+﻿"""
+About AI Co Designer - Placeholder Page
+"""
+
 import streamlit as st
 
-st.set_page_config(
-    page_title="About AI Co-Designer",
-    layout="wide"
-)
+st.set_page_config(page_title="About AI Co Designer", page_icon="📊", layout="wide")
 
-st.title("🤖 About AI Co-Designer")
+st.title("📊 About AI Co Designer")
 
-st.markdown("""
-### A simple explanation for everyone
+# Check if user is logged in
+if not st.session_state.get("logged_in"):
+    st.warning("⚠️ Please log in first")
+    st.stop()
 
-**AI Co-Designer** is a smart assistant inside **NanoBio Studio**.  
-Its purpose is to help you **decide which nanoparticle designs are worth testing**, before spending time and money in the lab.
+st.info("""
+🚀 **Feature Coming Soon**
+
+About AI Co Designer is being integrated with your nanoparticle design workflow.
+
+**Current Capabilities:**
+- ✅ Manual nanoparticle design in **Design Parameters**
+- ✅ Real-time scoring and analysis
+- ✅ Property optimization
+
+**What to do now:**
+1. Go to **Design Parameters** to configure nanoparticles
+2. View real-time scoring for your designs
+3. Check back soon for this feature!
 """)
 
-st.divider()
-
-st.header("🔬 What problem does it solve?")
-
-st.markdown("""
-Designing nanoparticles involves many choices:
-- How big the particle should be  
-- How charged it is  
-- What it is made of  
-- What drug it carries  
-- How much of it is used  
-
-There are **hundreds or thousands of possible combinations**.
-
-Testing all of them in real experiments would be:
-- Expensive  
-- Time-consuming  
-- Often unnecessary  
-
-**AI Co-Designer helps you narrow this down to the best few options.**
-""")
-
-st.divider()
-
-st.header("🆚 How is this different from the old NanoBio Studio?")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("Before (Old Version)")
-    st.markdown("""
-- You tested **one design at a time**
-- You manually compared results
-- You relied heavily on experience and guesswork
-- Good designs could be missed
-    """)
-
-with col2:
-    st.subheader("Now (With AI Co-Designer)")
-    st.markdown("""
-- The system tests **many designs automatically**
-- It compares them intelligently
-- It filters out weak or risky options
-- It recommends the **best candidates**
-    """)
-
-st.divider()
-
-st.header("🧠 What does AI Co-Designer actually do?")
-
-st.markdown("""
-Behind the scenes, AI Co-Designer:
-
-1. Tries many nanoparticle designs on the computer  
-2. Checks for each design:
-   - How well it might work  
-   - How risky it might be  
-   - How difficult or costly it might be to make  
-3. Compares all results  
-4. Shows you **a ranked list of the most promising designs**
-
-You stay in control — the system only **assists your decision**.
-""")
-
-st.divider()
-
-st.header("📊 What results will you see?")
-
-st.markdown("""
-AI Co-Designer shows you:
-- A short list of **top recommended designs**
-- Simple charts showing trade-offs (performance vs safety vs cost)
-- A confidence level for each recommendation
-- Clear explanations of potential risks (for example: high dose or extreme charge)
-""")
-
-st.divider()
-
-st.header("🧭 How do users typically use it?")
-
-st.markdown("""
-1. Define reasonable ranges (size, charge, materials, dose)  
-2. Choose what matters most (performance, safety, or cost)  
-3. Click **Run Optimization**  
-4. Review the recommended designs  
-5. Select a few designs for real laboratory testing  
-
-This helps focus experiments on the **most promising options first**.
-""")
-
-st.divider()
-
-st.header("❗ What AI Co-Designer does NOT do")
-
-st.markdown("""
-To avoid misunderstanding:
-
-- ❌ It does **not** replace laboratory experiments  
-- ❌ It does **not** treat patients  
-- ❌ It does **not** make medical or clinical decisions  
-
-✔ It is a **decision-support tool**, designed to guide research planning.
-""")
-
-st.divider()
-
-st.header("🎯 Why this matters")
-
-st.markdown("""
-AI Co-Designer helps:
-- Save research time  
-- Reduce experimental cost  
-- Lower risk of failed experiments  
-- Improve decision-making  
-- Use labs and funding more efficiently  
-
-**In short:**  
-The old NanoBio Studio showed results.  
-**AI Co-Designer helps you decide what to do next.**
-""")
-
-st.success("You are still the decision maker. AI Co-Designer is here to assist you.")
+# Show current design if available
+if st.session_state.get("design"):
+    st.divider()
+    st.subheader("Current Design Configuration")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Material", st.session_state.get("design", {}).get("Material", "N/A"))
+    with col2:
+        st.metric("Size", f"{st.session_state.get('design', {}).get('Size', 'N/A')} nm")
+    with col3:
+        st.metric("Charge", f"{st.session_state.get('design', {}).get('Charge', 'N/A')} mV")
