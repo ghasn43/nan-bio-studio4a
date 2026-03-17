@@ -17,6 +17,14 @@ if not st.session_state.get("logged_in"):
     st.info("Redirecting to login...")
     st.switch_page("Login.py")
 
+# Initialize session state for disease selection
+if "hcc_subtype" not in st.session_state:
+    st.session_state.hcc_subtype = "AFP-high HCC"
+if "selected_drug" not in st.session_state:
+    st.session_state.selected_drug = "Sorafenib"
+if "disease_selected" not in st.session_state:
+    st.session_state.disease_selected = False
+
 st.title("🏥 Disease & Drug Selection")
 st.caption("Step 1: Choose disease type and therapeutic drug")
 
@@ -37,9 +45,10 @@ with col1:
             "Lung Cancer",
             "Colorectal Cancer"
         ],
-        key="disease_select"
+        key="disease_select",
+        index=0
     )
-    
+
     if disease == "Hepatocellular Carcinoma (HCC)":
         subtype = st.selectbox(
             "Select HCC Subtype",
@@ -49,9 +58,11 @@ with col1:
                 "Immune-excluded HCC",
                 "Immune-desert HCC"
             ],
-            key="hcc_subtype"
+            index=0
         )
         st.session_state.hcc_subtype = subtype
+    
+    st.session_state.selected_disease = disease
 
 with col2:
     st.subheader("💊 Select Therapeutic Drug")
@@ -65,7 +76,7 @@ with col2:
             "Durvalumab",
             "Nivolumab"
         ],
-        key="drug_select"
+        index=0
     )
     
     st.session_state.selected_drug = drug
@@ -73,7 +84,10 @@ with col2:
 st.markdown("---")
 
 # Display selections
-st.success(f"✅ Selected: **{disease}** with **{drug}**")
+if st.session_state.get("selected_disease") and st.session_state.get("selected_drug"):
+    st.success(f"✅ Selected: **{st.session_state.selected_disease}** with **{st.session_state.selected_drug}**")
+else:
+    st.info("👆 Please select a disease and drug above")
 
 # Action buttons
 col1, col2, col3 = st.columns(3)
@@ -84,10 +98,13 @@ with col1:
         st.switch_page("pages/2_Home.py")
 
 with col2:
-    if st.button("Next: Design Parameters →", type="primary", use_container_width=True):
-        st.session_state.disease_selected = True
-        st.success("Disease selected! Proceeding to design parameters...")
-        st.info("🎨 Design Parameters page coming next")
+    if st.session_state.get("selected_disease") and st.session_state.get("selected_drug"):
+        if st.button("Next: Design Parameters →", type="primary", use_container_width=True):
+            st.session_state.disease_selected = True
+            st.success("Disease selected! Proceeding to design parameters...")
+            st.info("🎨 Design Parameters page coming next")
+    else:
+        st.button("Next: Design Parameters →", disabled=True, use_container_width=True)
 
 with col3:
     pass
