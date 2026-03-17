@@ -83,7 +83,7 @@ st.divider()
 tab1, tab2, tab3, tab4 = st.tabs(["🧬 Core Properties", "🎨 Surface & Chemistry", "🎯 Targeting", "📊 Scoring"])
 
 # Function to display gauge chart
-def display_score_gauge():
+def display_score_gauge(key="gauge"):
     """Display the real-time design scoring gauge"""
     impact = compute_impact(d)
     overall = overall_score_from_impact(impact)
@@ -120,7 +120,7 @@ def display_score_gauge():
     
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=key)
     with col2:
         st.markdown("### 📊 Score Metrics")
         st.metric("Overall Score", f"{overall:.1f}/100")
@@ -225,7 +225,7 @@ with tab1:
         )    
     st.divider()
     st.markdown("### 🎯 Parameter Impact on Score")
-    display_score_gauge()
+    display_score_gauge("gauge_core")
 # TAB 2: SURFACE & CHEMISTRY
 with tab2:
     st.subheader("🎨 Surface Modification & Chemistry")
@@ -300,7 +300,7 @@ with tab2:
     
     st.divider()
     st.markdown("### 🎯 Parameter Impact on Score")
-    display_score_gauge()
+    display_score_gauge("gauge_surface")
 
 # TAB 3: TARGETING
 with tab3:
@@ -358,13 +358,13 @@ with tab3:
     
     st.divider()
     st.markdown("### 🎯 Parameter Impact on Score")
-    display_score_gauge()
+    display_score_gauge("gauge_targeting")
 
 # TAB 4: SCORING & ANALYSIS
 with tab4:
     st.subheader("📊 Design Performance Analysis")
     
-    display_score_gauge()
+    display_score_gauge("gauge_scoring")
     
     st.divider()
     
