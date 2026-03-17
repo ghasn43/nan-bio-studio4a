@@ -6,6 +6,7 @@ User authentication interface for the NanoBio Studio.
 
 import streamlit as st
 import logging
+import time
 from datetime import datetime
 from streamlit_auth import StreamlitAuth, show_user_info
 
@@ -27,15 +28,18 @@ def main():
     # Initialize session state
     StreamlitAuth.init_session_state()
 
-    # If already authenticated, show welcome
-    if StreamlitAuth.is_authenticated():
+    # If already authenticated, check for logged_in as well and redirect to main app
+    if StreamlitAuth.is_authenticated() or (st.session_state.get("logged_in") and st.session_state.get("username")):
         st.success("✅ You are already logged in!")
-
+        
         show_user_info()
-
+        
         st.divider()
-
-        st.info("📍 Navigate to other pages using the sidebar menu to access ML features")
+        
+        if st.button("→ Go to Main App", type="primary", use_container_width=True):
+            st.switch_page("App.py")
+        
+        st.info("Or use the browser back button to continue")
 
         return
 
@@ -99,19 +103,24 @@ def main():
                 email=email,
                 roles=roles,
             )
+            
+            # Also set the App.py session state for compatibility
+            st.session_state.logged_in = True
+            st.session_state.username = username
 
             st.success(f"✅ Welcome, {username}!")
             st.balloons()
 
-            # Show user info
-            st.divider()
-            show_user_info()
-
-            st.divider()
-
-            st.info("📍 Navigate to other pages using the sidebar menu")
-
             logger.info(f"User logged in: {username}")
+            
+            # Redirect to main app
+            time.sleep(0.5)  # Brief delay to show success message
+            try:
+                st.switch_page("App.py")
+            except AttributeError:
+                # Fallback for older Streamlit versions
+                st.info("📍 Redirecting to main app...")
+                st.markdown('<meta http-equiv="refresh" content="2;url=App.py" />', unsafe_allow_html=True)
 
         else:
             st.error("❌ Invalid username or password")
