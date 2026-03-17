@@ -96,7 +96,12 @@ def main():
                     st.session_state.role = role or "viewer"
                     
                     # Also set StreamlitAuth session
-                    StreamlitAuth.set_user(username, role or "viewer")
+                    StreamlitAuth.login(
+                        user_id=username,
+                        username=username,
+                        email="",
+                        roles=[role or "viewer"]
+                    )
                     
                     st.success(f"✅ Welcome {username}!")
                     
