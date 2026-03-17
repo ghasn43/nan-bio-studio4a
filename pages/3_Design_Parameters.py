@@ -394,7 +394,7 @@ with col1:
 with col2:
     if st.button("Next: Run Simulation →", type="primary", use_container_width=True):
         st.session_state.parameters_configured = True
-        st.success("✅ Parameters saved! Ready for simulation...")
+        st.switch_page("pages/4_Run_Simulation.py")
 
 with col3:
     if st.button("Save Design", use_container_width=True):
