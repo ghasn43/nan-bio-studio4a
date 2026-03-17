@@ -55,7 +55,7 @@ def main():
         st.divider()
         
         if st.button("→ Go to Main App", type="primary", use_container_width=True):
-            st.switch_page("App.py")
+            st.switch_page("pages/2_Home.py")
         
         st.info("Or use the browser back button to continue")
 
@@ -104,8 +104,8 @@ def main():
                     
                     time.sleep(0.5)
                     
-                    # Redirect to main app
-                    st.switch_page("App.py")
+                    # Redirect to main app - use pages/ directory
+                    st.switch_page("pages/2_Home.py")
                 else:
                     st.error("❌ Invalid username or password")
 
