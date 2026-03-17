@@ -1,128 +1,19 @@
 """
-Sidebar Navigation Renderer
-Displays unified navigation structure in Streamlit sidebar
-Implements role-based access control
+Sidebar Navigation - Minimal stub for Streamlit Cloud compatibility
 """
-
 import streamlit as st
-from components.navigation_config import NAVIGATION_STRUCTURE
-
-def get_user_role():
-    """Get current user's role"""
-    return st.session_state.get("role", "viewer").lower()
-
-def is_admin():
-    """Check if user is admin"""
-    return get_user_role() == "admin"
-
-def is_scientist():
-    """Check if user is scientist/research role"""
-    return get_user_role() in ["scientist", "research"]
 
 def render_sidebar_navigation():
-    """
-    Render the unified sidebar navigation menu
-    Organized by categories with descriptions
-    Implements role-based filtering
-    """
-    
+    """Render sidebar navigation"""
     with st.sidebar:
-        st.markdown("---")
-        st.markdown("## 📋 Navigation Menu")
-        st.markdown("---")
-        for category, config in NAVIGATION_STRUCTURE.items():
-            # Hide admin section from non-admin users
-            if "⚙️ Administration" in category and not is_admin():
-                continue
-            
-            # Category header with expander
-            with st.expander(f"**{category}**", expanded=False):
-                description = config.get("description", "")
-                if description:
-                    st.caption(description)
-                
-                pages = config.get("pages", [])
-                
-                if pages:
-                    # Handle both string and dict page formats
-                    for page in pages:
-                        if isinstance(page, dict):
-                            name = page.get("name", "Unknown")
-                            file_path = page.get("file", "")
-                            description = page.get("description", "")
-                            
-                            # Create clickable page link
-                            if st.button(
-                                f"➡️ {name}",
-                                use_container_width=True,
-                                key=f"nav_{file_path}"
-                            ):
-                                st.switch_page(file_path)
-                            
-                            if description:
-                                st.caption(description)
-                        
-                        elif isinstance(page, str):
-                            # Simple string page reference
-                            if st.button(page, use_container_width=True, key=f"nav_{page}"):
-                                st.switch_page(page)
+        st.markdown("### Navigation")
         
-        st.markdown("---")
+        if st.button("🏠 Home"):
+            st.switch_page("pages/00_Disease_Selection.py")
         
-        # Quick stats
-        st.markdown("### 📊 Quick Info")
-        if 'trial_id' in st.session_state and st.session_state.trial_id:
-            st.success(f"**Trial Active**")
-            st.caption(st.session_state.trial_id[:20] + "...")
-        else:
-            st.info("No active trial")
-        
-        # User info
-        if 'logged_in' in st.session_state and st.session_state.logged_in:
-            st.markdown("---")
-            st.markdown(f"**User:** {st.session_state.username}")
-            if 'role' in st.session_state:
-                role_badge = "👑 Admin" if is_admin() else "🔬 Scientist" if is_scientist() else "👁️ Viewer"
-                st.markdown(f"**Role:** {role_badge}")
-            
-            # Logout button
-            st.markdown("---")
-            if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
-                st.session_state.logged_in = False
-                st.session_state.username = None
-                st.session_state.role = None
-                st.success("✅ You have been logged out.")
-                st.switch_page("pages/0_Auth.py")
+        if st.button("🔐 Logout"):
+            st.session_state.logged_in = False
+            st.session_state.username = None
+            st.rerun()
 
-def render_mobile_navigation():
-    """
-    Render a simpler navigation for mobile devices
-    Uses selectbox instead of expanders for better mobile UX
-    """
-    
-    with st.sidebar:
-        st.markdown("---")
-        st.markdown("## 🧭 Go To")
-        
-        # Create a flat list of all pages
-        nav_options = ["Select a page..."]
-        nav_map = {}
-        
-        for category, config in NAVIGATION_STRUCTURE.items():
-            pages = config.get("pages", [])
-            for page in pages:
-                if isinstance(page, dict):
-                    name = page.get("name", "Unknown")
-                    file_path = page.get("file", "")
-                    display_name = f"{category} → {name}"
-                    nav_options.append(display_name)
-                    nav_map[display_name] = file_path
-        
-        selected = st.selectbox(
-            "Navigate to:",
-            nav_options,
-            label_visibility="collapsed"
-        )
-        
-        if selected != "Select a page..." and selected in nav_map:
-            st.switch_page(nav_map[selected])
+__all__ = ["render_sidebar_navigation"]
