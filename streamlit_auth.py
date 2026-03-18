@@ -22,6 +22,23 @@ SESSIONS_FILE = Path(__file__).parent / "sessions.json"
 # Idle timeout in seconds (15 minutes)
 IDLE_TIMEOUT_SECONDS = 900
 
+# Explicit exports for clarity and Cloud compatibility
+__all__ = [
+    'StreamlitAuth',
+    'show_user_info',
+    'restore_session_from_persistent',
+    'check_session_timeout',
+    'switch_page_with_token',
+    'require_login',
+    'require_permission',
+    'load_persistent_sessions',
+    'save_persistent_sessions',
+    'create_persistent_session',
+    'get_persistent_session',
+    'update_last_activity',
+    'clear_persistent_session',
+]
+
 
 # ============================================================
 # PERSISTENT SESSION MANAGEMENT
