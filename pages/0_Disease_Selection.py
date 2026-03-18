@@ -15,7 +15,7 @@ st.set_page_config(page_title="Disease & Drug Selection", layout="wide")
 if not st.session_state.get("logged_in"):
     st.warning("⚠️ Please log in first")
     st.info("Redirecting to login...")
-    st.switch_page("Login.py")
+    st.stop()
 
 # Render sidebar navigation
 try:

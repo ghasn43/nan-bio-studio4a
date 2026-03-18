@@ -23,7 +23,7 @@ st.set_page_config(page_title="Run Simulation", layout="wide")
 # Check if user is logged in
 if not st.session_state.get("logged_in"):
     st.warning("⚠️ Please log in first")
-    st.switch_page("Login.py")
+    st.stop()
 
 # Check if design parameters were configured
 if not st.session_state.get("parameters_configured"):

@@ -24,7 +24,7 @@ st.set_page_config(page_title="Design Parameters", layout="wide")
 # Check if user is logged in
 if not st.session_state.get("logged_in"):
     st.warning("⚠️ Please log in first")
-    st.switch_page("Login.py")
+    st.stop()
 
 # Check if disease was selected
 if not st.session_state.get("disease_selected"):

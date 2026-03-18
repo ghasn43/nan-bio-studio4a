@@ -22,7 +22,8 @@ st.set_page_config(page_title="Trial History", layout="wide")
 # Check if user is logged in
 if not st.session_state.get("logged_in"):
     st.warning("⚠️ Please log in first")
-    st.switch_page("../Login.py")
+    st.info("Return to the login page to continue.")
+    st.stop()
 
 # ============================================================
 # HELPER FUNCTIONS FOR EXPORT
