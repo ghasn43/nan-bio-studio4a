@@ -331,6 +331,27 @@ st.info(f"**Logged in as:** {user_name}")
 st.divider()
 
 # ============================================================
+# GENERATE ALL TRIAL DATA (used across multiple tabs)
+# ============================================================
+
+num_trials = 25  # Display all trials, not just 5
+
+trial_ids = [f"TRIAL-{i:03d}" for i in range(1, num_trials + 1)]
+materials = ["Lipid NP", "PLGA", "Gold NP", "Chitosan", "Polymer"]
+statuses = ["✅ Complete", "⚙️ Running", "❌ Failed"]
+
+trials_data = {
+    "Trial ID": trial_ids,
+    "Date": [(datetime.now() - timedelta(hours=i*6)).strftime("%Y-%m-%d %H:%M") for i in range(num_trials)],
+    "Disease": ["HCC"] * num_trials,
+    "Material": [materials[i % len(materials)] for i in range(num_trials)],
+    "Size (nm)": [80 + (i * 2) % 60 for i in range(num_trials)],
+    "Status": [statuses[i % len(statuses)] for i in range(num_trials)],
+    "Delivery %": [50 + (i * 3) % 50 for i in range(num_trials)],
+    "Overall Score": [60 + (i * 2) % 40 if statuses[i % len(statuses)] == "✅ Complete" else "In Progress" for i in range(num_trials)],
+}
+
+# ============================================================
 # TABS FOR DIFFERENT VIEWS
 # ============================================================
 
@@ -345,24 +366,6 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.subheader("Recent Design Trials")
     
-    # Mock trial data
-    trials_data = {
-        "Trial ID": ["TRIAL-001", "TRIAL-002", "TRIAL-003", "TRIAL-004", "TRIAL-005"],
-        "Date": [
-            (datetime.now() - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M"),
-            (datetime.now() - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M"),
-            (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M"),
-            (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d %H:%M"),
-            (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d %H:%M"),
-        ],
-        "Disease": ["HCC", "HCC", "HCC", "HCC", "HCC"],
-        "Material": ["Lipid NP", "PLGA", "Lipid NP", "Gold NP", "Lipid NP"],
-        "Size (nm)": [100, 110, 95, 105, 115],
-        "Status": ["✅ Complete", "✅ Complete", "✅ Complete", "✅ Complete", "⚙️ Running"],
-        "Delivery %": [87.5, 82.3, 91.2, 75.8, 0],
-        "Overall Score": [89, 85, 92, 78, "In Progress"],
-    }
-    
     df_trials = pd.DataFrame(trials_data)
     
     st.dataframe(df_trials, use_container_width=True, hide_index=True)
@@ -371,9 +374,10 @@ with tab1:
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Trials", 5, "This month: 5")
+        st.metric("Total Trials", num_trials, f"This month: {num_trials}")
     with col2:
-        st.metric("Success Rate", "80%", "4/5 completed")
+        completed = sum(1 for s in trials_data["Status"] if "Complete" in s)
+        st.metric("Success Rate", f"{int(completed/num_trials*100)}%", f"{completed}/{num_trials} completed")
     with col3:
         st.metric("Best Score", "92/100", "TRIAL-003")
 
@@ -381,8 +385,8 @@ with tab1:
 with tab2:
     st.subheader("Trial Details & Comparison")
     
-    # Select trial to view
-    trial_id = st.selectbox("Select Trial", ["TRIAL-001", "TRIAL-002", "TRIAL-003", "TRIAL-004", "TRIAL-005"])
+    # Select trial to view (from all trials, not just 5)
+    trial_id = st.selectbox("Select Trial", trial_ids)
     
     st.markdown(f"### {trial_id} - Detailed Report")
     
@@ -485,18 +489,21 @@ with tab3:
         st.markdown("### Overall Score Trend")
         
         trend_data = pd.DataFrame({
-            "Trial": ["TRIAL-001", "TRIAL-002", "TRIAL-003", "TRIAL-004", "TRIAL-005"],
-            "Score": [89, 85, 92, 78, 88]
+            "Trial": trials_data["Trial ID"],
+            "Score": trials_data["Overall Score"]
         })
+        # Remove non-numeric scores for charting
+        trend_data_numeric = trend_data[trend_data["Score"] != "In Progress"].copy()
+        trend_data_numeric["Score"] = pd.to_numeric(trend_data_numeric["Score"])
         
-        st.line_chart(trend_data.set_index("Trial"))
+        st.line_chart(trend_data_numeric.set_index("Trial"))
     
     with col2:
         st.markdown("### Delivery Efficiency vs Toxicity")
         
         scatter_data = pd.DataFrame({
-            "Delivery %": [87.5, 82.3, 91.2, 75.8, 86.5],
-            "Toxicity": [0.8, 1.2, 0.5, 2.1, 0.9]
+            "Delivery %": trials_data["Delivery %"],
+            "Toxicity": [round(10 - x/10, 1) if x != "In Progress" else 0 for x in trials_data["Overall Score"]]
         })
         
         st.scatter_chart(scatter_data)
@@ -553,10 +560,13 @@ with tab4:
     
     stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
     
+    active_trials = sum(1 for s in trials_data["Status"] if "Running" in s)
+    completed_trials = sum(1 for s in trials_data["Status"] if "Complete" in s)
+    
     with stats_col1:
-        st.metric("Active Trials", 1)
+        st.metric("Active Trials", active_trials)
     with stats_col2:
-        st.metric("Completed Trials", 4)
+        st.metric("Completed Trials", completed_trials)
     with stats_col3:
         st.metric("Total Storage Used", "2.3 MB")
     with stats_col4:

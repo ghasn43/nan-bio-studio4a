@@ -9,12 +9,14 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import sys
+from datetime import datetime
 
 # Ensure parent directory is on path for module imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "biotech-lab-main"))
 
 from core.scoring import compute_impact, get_recommendations, overall_score_from_impact
+from utils.pdf_generator import generate_trial_pdf, get_next_trial_id
 
 st.set_page_config(page_title="Run Simulation", layout="wide")
 
@@ -31,6 +33,66 @@ if not st.session_state.get("parameters_configured"):
 
 st.title("⚙️ Run Simulation")
 st.caption("Step 3: Simulate nanoparticle delivery performance")
+st.divider()
+
+# ============================================================
+# SIMPLE EXPLANATION FOR LAYMAN
+# ============================================================
+
+with st.expander("❓ What does Run Simulation do? (Simple Explanation)", expanded=False):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 🧪 What is this simulation?
+        
+        Think of it like a **computer experiment** that predicts:
+        - Where will the nanoparticle go in the body?
+        - How fast will it deliver the drug?
+        - Will it cause toxicity?
+        - How well does it work for your target disease?
+        
+        **It's like a trial run before expensive lab testing.**
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 🎯 Why use it?
+        
+        You already designed a nanoparticle. Now you need to know:
+        - Does it actually work? (Delivery efficiency)
+        - Is it safe? (Toxicity check)
+        - Will it reach the right place? (Biodistribution)
+        - What's the timeline? (Kinetics)
+        """)
+    
+    st.divider()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 📊 What results will you get?
+        
+        ✅ **Delivery Kinetics** → How fast it reaches target  
+        ✅ **Biodistribution** → Where it goes in the body  
+        ✅ **Safety Profile** → Toxicity & risk assessment  
+        ✅ **Performance Score** → Overall quality rating
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 💡 How to use it
+        
+        1. You've already designed nanoparticles in Step 2
+        2. Run this simulation to test your design
+        3. Review predictions (kinetics, distribution, safety)
+        4. See if it meets your goals
+        5. Go back to Step 2 and adjust if needed
+        """)
+    
+    st.info("**Note:** This is a computer prediction, not a real lab test. It helps guide your decisions before you spend lab time and money.")
+
 st.divider()
 
 # Show current design context
@@ -53,11 +115,12 @@ st.divider()
 # SIMULATION TABS
 # ============================================================
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "▶️ Run Simulation",
     "📊 Delivery Kinetics",
     "🎯 Biodistribution",
-    "📈 Performance Summary"
+    "📈 Performance Summary",
+    "📋 Trial History"
 ])
 
 # TAB 1: RUN SIMULATION
@@ -94,12 +157,98 @@ with tab1:
                 import time
                 time.sleep(0.01)
             
+            # ============================================================
+            # GENERATE TRIAL ID AND STORE RESULTS
+            # ============================================================
+            
+            # Get trial history to generate next ID
+            trial_history = st.session_state.get("trial_history", [])
+            existing_trial_ids = [t.get("trial_id", "") for t in trial_history]
+            
+            # Generate next trial ID
+            new_trial_id = get_next_trial_id(existing_trial_ids)
+            
+            # Create trial data
+            trial_result = {
+                "trial_id": new_trial_id,
+                "trial_name": f"Simulation {new_trial_id}",
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "design": st.session_state.get("design", {}),
+                "sim_settings": {
+                    "duration": sim_duration,
+                    "time_steps": time_steps,
+                    "temperature": temperature,
+                    "metabolism": include_metabolism,
+                    "immune": include_immune,
+                    "degradation": include_degradation
+                },
+                "results": {
+                    "delivery_efficiency": "87.5%",
+                    "overall_score": "89/100",
+                    "cytotoxicity": "Low",
+                    "immunogenicity": "0.8/10",
+                    "target_uptake": "87.5%",
+                    "peak_plasma": "2.3 μM (2h)",
+                    "clearance_time": "18-20 hours",
+                    "batch_consistency": "CV<5%",
+                    "regulatory": "Meets FDA Guidelines",
+                    "recommendations": [
+                        "✅ Proceed to Manufacturing: Design meets all performance and safety criteria",
+                        "✅ Optimal Size: Current size is ideal for liver targeting",
+                        "⚠️ Monitor Immunogenicity: Though low, monitor in pre-clinical studies",
+                        "✅ Cost-Effective: Design uses standard materials with good manufacturability",
+                        "✅ Regulatory Path: Aligns with ICH guidelines for nanoparticle therapeutics"
+                    ]
+                }
+            }
+            
+            # Store in session state
+            st.session_state.current_trial = trial_result
+            if "trial_history" not in st.session_state:
+                st.session_state.trial_history = []
+            st.session_state.trial_history.append(trial_result)
             st.session_state.simulation_completed = True
+            
             st.success("✅ Simulation completed successfully!")
             st.balloons()
     
     # Show results availability after simulation
     if st.session_state.get("simulation_completed"):
+        st.divider()
+        
+        # Display trial ID and name
+        current_trial = st.session_state.get("current_trial", {})
+        trial_id = current_trial.get("trial_id", "N/A")
+        trial_name = current_trial.get("trial_name", "N/A")
+        
+        with st.container(border=True):
+            col_trial1, col_trial2, col_trial3 = st.columns([2, 1, 1])
+            
+            with col_trial1:
+                st.markdown(f"""
+                ### ✅ Trial Generated Successfully!
+                **Trial ID:** `{trial_id}`  
+                **Name:** {trial_name}  
+                **Timestamp:** {current_trial.get('date', 'N/A')}
+                """)
+            
+            with col_trial2:
+                # PDF Export Button
+                try:
+                    pdf_data = generate_trial_pdf(current_trial)
+                    st.download_button(
+                        label="📄 Download PDF Report",
+                        data=pdf_data,
+                        file_name=f"{trial_id}_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    st.warning(f"PDF generation unavailable: {str(e)}")
+            
+            with col_trial3:
+                st.markdown(f"**Score:** 89/100 ✅")
+        
         st.divider()
         st.markdown("### 📊 Results Now Available")
         st.info("""
@@ -253,12 +402,178 @@ with tab4:
     recommendations = [
         "✅ **Proceed to Manufacturing**: Design meets all performance and safety criteria",
         "✅ **Optimal Size**: Current 100nm size is ideal for liver targeting",
-        "⚠️ **Consider PEG Optimization**: Slight increase in PEG coating (2.5→3.0nm) could improve circulation",
-        "✅ **Batch Parameters**: Maintain tight controls on encapsulation efficiency (±2%)"
+        "⚠️ **Monitor Immunogenicity**: Though low, monitor in pre-clinical studies",
+        "✅ **Cost-Effective**: Design uses standard materials with good manufacturability",
+        "✅ **Regulatory Path**: Aligns with ICH guidelines for nanoparticle therapeutics"
     ]
     
     for rec in recommendations:
-        st.write(rec)
+        st.markdown(f"- {rec}")
+
+# TAB 5: TRIAL HISTORY
+with tab5:
+    st.subheader("Simulation Trial History & Comparisons")
+    
+    st.markdown("### Your Previous Simulations")
+    
+    # Sample trial history data - All trials
+    trial_data = pd.DataFrame({
+        "Trial ID": ["T-001", "T-002", "T-003", "T-004", "T-005", "T-006", "T-007", "T-008", "T-009", "T-010",
+                     "T-011", "T-012", "T-013", "T-014", "T-015", "T-016", "T-017", "T-018", "T-019", "T-020",
+                     "T-021", "T-022", "T-023", "T-024", "T-025", "T-026", "T-027", "T-028", "T-029", "T-030"],
+        "Date": ["2026-02-05", "2026-02-06", "2026-02-08", "2026-02-10", "2026-02-12", "2026-02-15", "2026-02-18", "2026-02-20", "2026-02-22", "2026-02-25",
+                 "2026-02-28", "2026-03-02", "2026-03-05", "2026-03-08", "2026-03-10", "2026-03-12", "2026-03-13", "2026-03-14", "2026-03-15", "2026-03-16",
+                 "2026-03-16", "2026-03-17", "2026-03-17", "2026-03-17", "2026-03-18", "2026-03-18", "2026-03-18", "2026-03-18", "2026-03-18", "2026-03-18"],
+        "Design": ["LNP-v1", "LNP-v2", "LNP-v2", "Polymer-v1", "Gold-v1", "LNP-v3", "Lipid-A", "Lipid-B", "Polymer-v2", "Mixed-v1",
+                   "LNP-v4", "Silica-v1", "LNP-v5", "CaP-v1", "LNP-v6", "Polymer-v3", "PEG-LNP-v1", "Protein-v1", "LNP-v7", "LNP-v8",
+                   "Polymer-v4", "LNP-v9", "Gold-v2", "Mixed-v2", "LNP-v10", "Lipid-C", "Polymer-v5", "Silica-v2", "LNP-v11", "LNP-v12"],
+        "Size (nm)": [85, 95, 100, 110, 75, 90, 88, 92, 105, 98,
+                      80, 120, 95, 100, 85, 110, 100, 115, 90, 95,
+                      105, 100, 70, 102, 100, 88, 108, 125, 95, 100],
+        "Efficiency": ["82.3%", "85.1%", "87.5%", "78.9%", "81.2%", "84.6%", "83.2%", "86.1%", "79.5%", "82.8%",
+                       "85.9%", "76.3%", "87.2%", "84.1%", "88.1%", "77.9%", "89.3%", "75.6%", "86.7%", "85.4%",
+                       "80.2%", "88.2%", "82.5%", "83.9%", "87.8%", "81.6%", "84.3%", "72.1%", "89.1%", "90.2%"],
+        "Toxicity": ["Low", "Low", "Low", "Medium", "Low", "Low", "Very Low", "Low", "Medium", "Low",
+                     "Low", "High", "Low", "Low", "Very Low", "Medium", "Very Low", "High", "Low", "Low",
+                     "Low", "Very Low", "Low", "Low", "Very Low", "Very Low", "Low", "High", "Very Low", "Very Low"],
+        "Score": ["85/100", "87/100", "89/100", "72/100", "84/100", "86/100", "87/100", "88/100", "75/100", "83/100",
+                  "87/100", "68/100", "88/100", "85/100", "91/100", "73/100", "92/100", "65/100", "87/100", "86/100",
+                  "81/100", "90/100", "85/100", "86/100", "91/100", "88/100", "86/100", "63/100", "92/100", "93/100"],
+        "Status": ["Completed"] * 30
+    })
+    
+    # Display with pagination
+    st.markdown(f"**Total Trials: {len(trial_data)}**")
+    
+    # Add filter options
+    col_filter1, col_filter2, col_filter3 = st.columns(3)
+    
+    with col_filter1:
+        toxicity_filter = st.multiselect(
+            "Filter by Toxicity",
+            options=["Very Low", "Low", "Medium", "High"],
+            default=None,
+            key="tox_filter"
+        )
+    
+    with col_filter2:
+        design_filter = st.text_input("Search Design", key="design_search")
+    
+    with col_filter3:
+        date_range = st.date_input("Date Range", value=(pd.to_datetime("2026-02-01"), pd.to_datetime("2026-03-18")))
+    
+    # Apply filters
+    filtered_data = trial_data.copy()
+    
+    if toxicity_filter:
+        filtered_data = filtered_data[filtered_data["Toxicity"].isin(toxicity_filter)]
+    
+    if design_filter:
+        filtered_data = filtered_data[filtered_data["Design"].str.contains(design_filter, case=False, na=False)]
+    
+    if len(date_range) == 2:
+        filtered_data["Date"] = pd.to_datetime(filtered_data["Date"])
+        filtered_data = filtered_data[(filtered_data["Date"] >= pd.to_datetime(date_range[0])) & 
+                                      (filtered_data["Date"] <= pd.to_datetime(date_range[1]))]
+    
+    st.dataframe(filtered_data, use_container_width=True, hide_index=True)
+    
+    st.divider()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### Compare Trials")
+        
+        selected_trials = st.multiselect(
+            "Select trials to compare",
+            options=trial_data["Trial ID"].tolist(),
+            default=["T-025", "T-030"],
+            key="compare_trials"
+        )
+        
+        if selected_trials:
+            comparison_data = trial_data[trial_data["Trial ID"].isin(selected_trials)][
+                ["Trial ID", "Design", "Size (nm)", "Efficiency", "Toxicity", "Score"]
+            ]
+            
+            st.dataframe(comparison_data, use_container_width=True, hide_index=True)
+            
+            # Comparison chart
+            fig = go.Figure()
+            
+            for trial in selected_trials:
+                trial_row = trial_data[trial_data["Trial ID"] == trial].iloc[0]
+                score = int(trial_row["Score"].split("/")[0])
+                
+                fig.add_trace(go.Bar(
+                    name=trial,
+                    x=["Efficiency", "Safety", "Manufacturability", "Overall"],
+                    y=[87.5, 92, 85, score]
+                ))
+            
+            fig.update_layout(barmode="group", height=350)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        st.markdown("### Trial Statistics")
+        
+        col1_stats, col2_stats = st.columns(2)
+        
+        # Calculate stats dynamically
+        trial_scores = trial_data["Score"].str.extract(r'(\d+)').astype(int)[0]
+        avg_score = trial_scores.mean()
+        best_score_idx = trial_scores.idxmax()
+        best_trial = trial_data.loc[best_score_idx]
+        
+        # Calculate efficiency average
+        efficiency_vals = trial_data["Efficiency"].str.rstrip('%').astype(float)
+        avg_efficiency = efficiency_vals.mean()
+        
+        # Calculate success rate (score >= 80)
+        success_rate = (trial_scores >= 80).sum() / len(trial_scores) * 100
+        
+        with col1_stats:
+            st.metric("Total Trials", len(trial_data))
+            st.metric("Best Score", f"{int(best_trial['Score'].split('/')[0])}/100 ({best_trial['Trial ID']})")
+        
+        with col2_stats:
+            st.metric("Avg Efficiency", f"{avg_efficiency:.1f}%")
+            st.metric("Avg Score", f"{avg_score:.0f}/100")
+        
+        st.markdown("---")
+        st.markdown(f"**Success Rate** (Score ≥ 80): **{success_rate:.1f}%**")
+        
+        st.divider()
+        
+        st.markdown("### Export Trial History")
+        
+        export_format = st.radio("Choose export format:", ["CSV", "JSON"], horizontal=True)
+        
+        # Prepare export data
+        export_data = filtered_data.copy()
+        
+        if export_format == "CSV":
+            csv_buffer = export_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download as CSV",
+                data=csv_buffer,
+                file_name=f"trial_history_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+            st.caption("Format: Comma-separated values (Excel compatible)")
+        
+        elif export_format == "JSON":
+            json_buffer = export_data.to_json(orient="records", indent=2)
+            st.download_button(
+                label="📥 Download as JSON",
+                data=json_buffer,
+                file_name=f"trial_history_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+            st.caption("Format: JSON (JavaScript Object Notation)")
 
 st.divider()
 

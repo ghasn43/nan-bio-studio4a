@@ -5,8 +5,17 @@ import streamlit as st
 import numpy as np
 
 
-def compute_impact(design: dict) -> dict:
-    """Compute delivery (0-100), toxicity (0-10), cost (0-100)."""
+def compute_impact(design: dict, weights: dict = None) -> dict:
+    """Compute delivery (0-100), toxicity (0-10), cost (0-100).
+    
+    weights dict can override defaults:
+    {
+        'size': 0.18, 'charge': 0.14, 'encap': 0.18, 'pdi': 0.10,
+        'hydro': 0.06, 'stability': 0.04, 'targeting': 0.08,
+        'release': 0.04, 'surface_area': 0.04, 'hydrophobicity': 0.05,
+        'crystallinity': 0.05, 'coating': 0.05
+    }
+    """
 
     d = design
 
@@ -35,6 +44,19 @@ def compute_impact(design: dict) -> dict:
     surface_area = float(d.get("SurfaceArea", 250))
     degradation_time = float(d.get("DegradationTime", 30))
 
+    # Surface & Chemistry parameters
+    hydrophobicity = float(d.get("Hydrophobicity", 1.5))
+    crystallinity = float(d.get("CrystallinityIndex", 65))
+    coating = d.get("SurfaceCoating", ["PEG (Stealth)"])
+    coating_thickness = float(d.get("CoatingThickness", 2.5))
+    functional_groups = d.get("FunctionalGroups", [])
+
+    # Targeting parameters
+    ligand = d.get("Ligand", "None")
+    ligand_density = float(d.get("LigandDensity", 0))
+    receptor_binding = float(d.get("ReceptorBinding", 100.0))
+    release_predictability = float(d.get("ReleasePredictability", 85))
+
     # PDI score (lower is better)
     pdi_score = max(0, 100 - (pdi * 200))
 
@@ -45,14 +67,113 @@ def compute_impact(design: dict) -> dict:
     else:
         hydrodynamic_score = max(0, 100 - (abs(size_ratio - 1.15) * 50))
 
-    # Weighted average delivery
+    # Targeting score: bonus for active targeting
+    if ligand != "None":
+        # Ligand density score (higher is better, optimal 50-80%)
+        if 50 <= ligand_density <= 80:
+            ligand_score = 100
+        else:
+            ligand_score = max(0, 100 - (abs(ligand_density - 65) * 2))
+        
+        # Receptor binding score (lower Kd = better binding, optimal <50nM)
+        if receptor_binding < 50:
+            binding_score = 100
+        else:
+            binding_score = max(0, 100 - (receptor_binding / 10))
+        
+        targeting_score = (ligand_score * 0.6 + binding_score * 0.4)
+    else:
+        targeting_score = 60  # Passive targeting baseline
+
+    # Release predictability score
+    release_score = float(release_predictability)
+
+    # Surface Chemistry Scores
+    # Surface Area score (optimal 200-400 nm²)
+    if 200 <= surface_area <= 400:
+        surface_area_score = 100
+    else:
+        surface_area_score = max(0, 100 - (abs(surface_area - 300) / 3))
+    
+    # Hydrophobicity score (optimal 0.5-2.5 LogP for PEGylated NPs)
+    if 0.5 <= hydrophobicity <= 2.5:
+        hydrophobicity_score = 100
+    else:
+        hydrophobicity_score = max(0, 100 - (abs(hydrophobicity - 1.5) * 20))
+    
+    # Crystallinity score (higher is better for stability, optimal 70-90%)
+    if 70 <= crystallinity <= 90:
+        crystallinity_score = 100
+    else:
+        crystallinity_score = max(0, 100 - (abs(crystallinity - 80) * 2))
+    
+    # Coating score (stealth coatings improve circulation)
+    coating_bonus = 0
+    if isinstance(coating, list):
+        if "PEG (Stealth)" in coating:
+            coating_bonus = 30  # Excellent for circulation
+        if "Hyaluronic Acid" in coating:
+            coating_bonus += 20  # Good for targeting
+        if "Chitosan" in coating:
+            coating_bonus += 15  # Mucoadhesive
+        if "Albumin" in coating:
+            coating_bonus += 10  # Biocompatible
+    else:
+        if coating == "PEG (Stealth)":
+            coating_bonus = 30
+    coating_score = min(100, 50 + coating_bonus)
+    
+    # Coating thickness score (optimal 2-5 nm for PEG)
+    if 2 <= coating_thickness <= 5:
+        thickness_score = 100
+    elif coating_thickness > 0:
+        thickness_score = max(0, 100 - (abs(coating_thickness - 3.5) * 15))
+    else:
+        thickness_score = 30
+    
+    # Functional groups score (improves biocompatibility)
+    functional_score = 70  # Base score
+    if isinstance(functional_groups, list):
+        if "-COOH (Carboxyl)" in functional_groups:
+            functional_score += 20  # Good for targeting
+        if "-NH2 (Amino)" in functional_groups:
+            functional_score += 15  # Electrostatic interactions
+        if "-OH (Hydroxyl)" in functional_groups:
+            functional_score += 10  # Hydrophilic
+    functional_score = min(100, functional_score)
+
+    # Weighted average delivery (updated with surface chemistry)
+    # Default weights
+    default_weights = {
+        'size': 0.18, 'charge': 0.14, 'encap': 0.18, 'pdi': 0.10,
+        'hydro': 0.06, 'stability': 0.04, 'targeting': 0.08,
+        'release': 0.04, 'surface_area': 0.04, 'hydrophobicity': 0.05,
+        'crystallinity': 0.05, 'coating': 0.05
+    }
+    
+    # Override with custom weights if provided
+    if weights:
+        default_weights.update(weights)
+    w = default_weights
+    
+    # Normalize weights to ensure they sum to 1.0
+    total_weight = sum(w.values())
+    if total_weight != 1.0:
+        w = {k: v/total_weight for k, v in w.items()}
+    
     delivery = (
-        size_score * 0.25
-        + charge_score * 0.20
-        + encap_score * 0.25
-        + pdi_score * 0.15
-        + hydrodynamic_score * 0.10
-        + stability * 0.05
+        size_score * w['size']
+        + charge_score * w['charge']
+        + encap_score * w['encap']
+        + pdi_score * w['pdi']
+        + hydrodynamic_score * w['hydro']
+        + stability * w['stability']
+        + targeting_score * w['targeting']
+        + release_score * w['release']
+        + surface_area_score * w['surface_area']
+        + hydrophobicity_score * w['hydrophobicity']
+        + crystallinity_score * w['crystallinity']
+        + coating_score * w['coating']
     )
 
     # ---- Toxicity (0-10)
@@ -63,8 +184,42 @@ def compute_impact(design: dict) -> dict:
 
     pdi_toxicity = pdi * 2
     degradation_toxicity = max(0, (degradation_time - 30) / 30)
+    
+    # Surface chemistry toxicity factors
+    surface_toxicity = 0
+    
+    # Hydrophobicity toxicity (too hydrophobic = aggregation/toxicity)
+    if hydrophobicity > 3.0:
+        surface_toxicity += (hydrophobicity - 3.0) * 0.5  # Excess hydrophobicity
+    if hydrophobicity < 0 and hydrophobicity > -2:
+        surface_toxicity += 0.5  # Too hydrophilic may cause aggregation
+    
+    # Low crystallinity may indicate amorphous defects (toxicity risk)
+    if crystallinity < 40:
+        surface_toxicity += (40 - crystallinity) / 20
+    
+    # Coating protects against toxicity
+    coating_toxicity_reduction = 0
+    if isinstance(coating, list) and len(coating) > 0:
+        if "PEG (Stealth)" in coating:
+            coating_toxicity_reduction += 2
+        if "Hyaluronic Acid" in coating:
+            coating_toxicity_reduction += 1.5
+        if "Albumin" in coating:
+            coating_toxicity_reduction += 1
+    
+    surface_toxicity = max(0, surface_toxicity - coating_toxicity_reduction)
+    
+    # Targeting-related toxicity: improper targeting increases toxicity
+    targeting_toxicity = 0
+    if ligand != "None":
+        # Off-target toxicity from poor ligand density or binding
+        if ligand_density < 20 or ligand_density > 95:
+            targeting_toxicity += 1  # Poor density = off-target effects
+        if receptor_binding > 500:
+            targeting_toxicity += 0.5  # Weak binding = poor specificity
 
-    toxicity = min(10, base_toxicity + pdi_toxicity + degradation_toxicity)
+    toxicity = min(10, base_toxicity + pdi_toxicity + degradation_toxicity + surface_toxicity + targeting_toxicity)
 
     # ---- Cost (0-100)
     base_cost = min(
@@ -75,8 +230,39 @@ def compute_impact(design: dict) -> dict:
     surface_area_cost = surface_area / 20
     pdi_cost = (0.2 - min(pdi, 0.2)) * 100
     degradation_cost = max(0, (degradation_time - 60) / 10)
+    
+    # Surface Chemistry costs
+    coating_cost = 0
+    if isinstance(coating, list):
+        if "PEG (Stealth)" in coating:
+            coating_cost += 25
+        if "Hyaluronic Acid" in coating:
+            coating_cost += 20
+        if "Chitosan" in coating:
+            coating_cost += 15
+        if "Albumin" in coating:
+            coating_cost += 18
+    
+    # Functional groups synthesis cost
+    functional_cost = len(functional_groups) * 5 if functional_groups else 0
+    
+    # Coating thickness impacts manufacturing cost
+    coating_thickness_cost = max(0, coating_thickness / 2) if coating_thickness > 0 else 0
+    
+    # Targeting cost: active targeting adds cost
+    targeting_cost = 0
+    if ligand != "None":
+        # Ligand synthesis/conjugation cost
+        ligand_cost_map = {
+            "GalNAc": 20,
+            "Folate": 15,
+            "Transferrin": 30,
+            "RGD Peptide": 25,
+            "Anti-HER2": 40,
+        }
+        targeting_cost = ligand_cost_map.get(ligand, 20)
 
-    cost = min(100, base_cost + surface_area_cost + pdi_cost + degradation_cost)
+    cost = min(100, base_cost + surface_area_cost + pdi_cost + degradation_cost + targeting_cost + coating_cost + functional_cost + coating_thickness_cost)
 
     return {"Delivery": float(delivery), "Toxicity": float(toxicity), "Cost": float(cost)}
 
@@ -98,6 +284,51 @@ def get_recommendations(design: dict) -> list[str]:
         recommendations.append("🔴 **Improve encapsulation to >80%** for better drug delivery efficiency")
     elif design["Encapsulation"] < 85:
         recommendations.append("🟡 **Aim for >85% encapsulation** for optimal performance")
+
+    # Surface Chemistry recommendations
+    hydrophobicity = float(design.get("Hydrophobicity", 1.5))
+    if hydrophobicity > 3.0:
+        recommendations.append("🔴 **Reduce hydrophobicity (LogP <3.0)** to prevent aggregation and toxicity")
+    elif hydrophobicity > 2.5:
+        recommendations.append("🟡 **Lower hydrophobicity** for better aqueous stability")
+    
+    crystallinity = float(design.get("CrystallinityIndex", 65))
+    if crystallinity < 50:
+        recommendations.append("🔴 **Increase crystallinity to >60%** for better structural stability")
+    elif crystallinity < 70:
+        recommendations.append("🟡 **Improve crystallinity to 70-90%** for optimal performance")
+    
+    coating = design.get("SurfaceCoating", [])
+    if not coating or (isinstance(coating, list) and "PEG (Stealth)" not in coating):
+        recommendations.append("💡 **Add PEG coating** for enhanced circulation time and reduced opsonization")
+    
+    coating_thickness = float(design.get("CoatingThickness", 2.5))
+    if coating_thickness < 1.5:
+        recommendations.append("🟡 **Increase coating thickness to 2-5nm** for better protection")
+    elif coating_thickness > 6:
+        recommendations.append("🟡 **Reduce coating thickness** to <6nm to avoid reduced drug penetration")
+
+    # Targeting recommendations
+    if design.get("Ligand", "None") != "None":
+        ligand_density = float(design.get("LigandDensity", 0))
+        if ligand_density < 30:
+            recommendations.append("🔴 **Increase ligand density to >30%** for effective targeting")
+        elif ligand_density < 50:
+            recommendations.append("🟡 **Increase ligand density to 50-80%** for optimal targeting efficiency")
+        elif ligand_density > 95:
+            recommendations.append("🟡 **Reduce ligand density to <90%** to avoid steric hindrance")
+        
+        receptor_binding = float(design.get("ReceptorBinding", 100.0))
+        if receptor_binding > 500:
+            recommendations.append("🟡 **Improve receptor binding affinity** (target Kd <50nM) for better specificity")
+    else:
+        recommendations.append("💡 **Consider active targeting** (ligand + receptor) to improve drug delivery specificity")
+    
+    release_pred = float(design.get("ReleasePredictability", 85))
+    if release_pred < 70:
+        recommendations.append("🔴 **Improve release predictability to >70%** for consistent drug delivery")
+    elif release_pred < 85:
+        recommendations.append("🟡 **Aim for >85% release predictability** for optimal performance")
 
     if not recommendations:
         recommendations.append("✅ **Excellent design!** All parameters are within optimal ranges")

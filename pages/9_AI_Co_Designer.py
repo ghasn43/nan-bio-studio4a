@@ -19,6 +19,62 @@ if not st.session_state.get("logged_in"):
 st.subheader("Advanced AI-Driven Nanoparticle Design Optimization")
 
 # ============================================================
+# SIMPLE EXPLANATION FOR LAYMAN
+# ============================================================
+
+with st.expander("❓ What is AI Co-Designer? (Simple Explanation)", expanded=False):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 🎯 What problem does it solve?
+        
+        Designing a nanoparticle involves **hundreds of choices**:
+        - Size, charge, material, drug, dose
+        - Testing all combinations in a lab would be **expensive and slow**
+        
+        **AI Co-Designer helps you pick the best options first.**
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 🤖 How does it work?
+        
+        1. You tell the AI what matters most (safety, performance, cost)
+        2. The AI tests many designs on the computer
+        3. It shows you the **top 5-10 best designs**
+        4. You pick which ones to actually test in the lab
+        """)
+    
+    st.divider()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 📊 What does it show?
+        
+        ✅ Ranked list of best designs  
+        ✅ Performance vs safety vs cost trade-offs  
+        ✅ Why each design was suggested  
+        ✅ Reports for supervisors
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### ❌ What it does NOT do
+        
+        ❌ Replace your judgment  
+        ❌ Treat patients  
+        ❌ Make final decisions  
+        ✅ **Assist your decision-making**
+        """)
+    
+    st.success("**Bottom line:** AI Co-Designer is like a smart filter that helps you find promising nanoparticles to test, instead of testing blindly.")
+
+st.divider()
+
+# ============================================================
 # SIDEBAR: Optimization Configuration
 # ============================================================
 

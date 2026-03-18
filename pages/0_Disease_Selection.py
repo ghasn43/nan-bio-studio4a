@@ -17,6 +17,13 @@ if not st.session_state.get("logged_in"):
     st.info("Redirecting to login...")
     st.switch_page("Login.py")
 
+# Render sidebar navigation
+try:
+    from components.sidebar_navigation import render_sidebar_navigation
+    render_sidebar_navigation()
+except Exception as e:
+    st.sidebar.error(f"Navigation error: {e}")
+
 # Initialize session state for disease selection
 if "hcc_subtype" not in st.session_state:
     st.session_state.hcc_subtype = "AFP-high HCC"
