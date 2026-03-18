@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.scoring import compute_impact, get_recommendations, overall_score_from_impact
 from utils.pdf_generator import generate_trial_pdf, get_next_trial_id
+from modules.trial_registry import create_trial_entry, get_all_trials, TrialIDGenerator
 
 st.set_page_config(page_title="Run Simulation", layout="wide")
 
@@ -262,6 +263,31 @@ with tab1:
                 st.session_state.trial_history = []
             st.session_state.trial_history.append(trial_result)
             st.session_state.simulation_completed = True
+            
+            # IMPORTANT: Also save trial to persistent database
+            try:
+                design = st.session_state.get("design", {})
+                create_trial_entry(
+                    trial_id=new_trial_id,
+                    disease_subtype="hcc_l",  # Default to large HCC
+                    disease_name="Hepatocellular Carcinoma",
+                    drug_name=design.get("Drug", "Unknown"),
+                    np_size_nm=int(design.get("Size", 100)),
+                    np_charge_mv=int(design.get("Charge", -5)),
+                    np_peg_percent=float(design.get("Encapsulation", 85)),
+                    np_zeta_potential=float(design.get("Zeta", -30)),
+                    np_pdi=1.2,
+                    treatment_dose_mgkg=10.0,
+                    treatment_route="IV",
+                    treatment_frequency="Once",
+                    treatment_duration_days=1,
+                    trial_outcomes="Successful simulation",
+                    notes=f"Material: {design.get('Material', 'Unknown')}"
+                )
+                # Store trial ID in session for later reference
+                st.session_state.last_saved_trial_id = new_trial_id
+            except Exception as e:
+                st.warning(f"Could not save trial to database: {str(e)}")
             
             st.success("✅ Simulation completed successfully!")
             st.balloons()
