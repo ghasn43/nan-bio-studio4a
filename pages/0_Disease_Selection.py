@@ -11,11 +11,37 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "biotech-lab-main"))
 
 st.set_page_config(page_title="Disease & Drug Selection", layout="wide")
 
-# Check if user is logged in
-if not st.session_state.get("logged_in"):
+# ============================================================
+# SESSION RESTORATION & TIMEOUT CHECK
+# ============================================================
+
+from streamlit_auth import restore_session_from_persistent, check_session_timeout, StreamlitAuth
+
+# Initialize session state
+StreamlitAuth.init_session_state()
+
+# Try to restore session from URL query parameters
+query_params = st.query_params
+if "session_token" in query_params:
+    token = query_params.get("session_token", "")
+    if token:
+        restore_session_from_persistent(token)
+
+# Check if user is logged in or session is valid
+logged_in = st.session_state.get("logged_in") or st.session_state.get("authenticated")
+
+if not logged_in:
     st.warning("⚠️ Please log in first")
     st.info("Redirecting to login...")
     st.stop()
+
+# Check for session timeout
+if st.session_state.get("session_token"):
+    token = st.session_state.session_token
+    if not check_session_timeout(token):
+        st.warning("⏰ Your session has expired due to inactivity (15 minutes). Please log in again.")
+        StreamlitAuth.logout()
+        st.stop()
 
 # Render sidebar navigation
 try:

@@ -11,9 +11,13 @@ import numpy as np
 
 st.set_page_config(page_title="Validation & Testing - NanoBio Studio", layout="wide")
 
-# Check authentication
-if not st.session_state.get("logged_in"):
-    st.warning("⚠️ Please log in first")
+# ============================================================
+# SESSION RESTORATION & TIMEOUT CHECK
+# ============================================================
+
+from streamlit_auth import StreamlitAuth
+
+if not StreamlitAuth.require_login_with_persistence("Validation & Testing"):
     st.stop()
 
 # Render sidebar navigation

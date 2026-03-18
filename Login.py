@@ -33,7 +33,7 @@ st.set_page_config(
 import logging
 import time
 from datetime import datetime
-from streamlit_auth import StreamlitAuth, show_user_info
+from streamlit_auth import StreamlitAuth, show_user_info, restore_session_from_persistent, check_session_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,40 @@ def main():
 
     # Initialize session state
     StreamlitAuth.init_session_state()
+    
+    # ============================================================
+    # TRY TO RESTORE SESSION FROM PERSISTENT STORAGE
+    # ============================================================
+    
+    # Check URL query parameters for session token
+    query_params = st.query_params
+    if "session_token" in query_params:
+        token = query_params.get("session_token", "")
+        if token and restore_session_from_persistent(token):
+            st.success("✅ Session restored! You are logged in.")
+            st.info("Redirecting to Disease Selection...")
+            time.sleep(0.5)
+            st.switch_page("pages/0_Disease_Selection.py")
+            return
+    
+    # Check if session token is in memory and still valid
+    if st.session_state.get("session_token"):
+        token = st.session_state.session_token
+        if check_session_timeout(token):
+            st.success("✅ You are already logged in!")
+            show_user_info()
+            st.divider()
+            if st.button("→ Go to Disease Selection", type="primary", use_container_width=True):
+                st.switch_page("pages/0_Disease_Selection.py")
+            st.info("Or use the browser back button to continue")
+            return
+        else:
+            # Session timed out
+            st.warning("⏰ Your session has expired due to inactivity (15 minutes). Please log in again.")
+            StreamlitAuth.logout()
+            st.query_params.clear()
 
-    # If already authenticated, check for logged_in as well and redirect to main app
+    # If already authenticated in memory, redirect to main app
     if StreamlitAuth.is_authenticated() or (st.session_state.get("logged_in") and st.session_state.get("username")):
         st.success("✅ You are already logged in!")
         
@@ -95,13 +127,15 @@ def main():
                     st.session_state.username = username
                     st.session_state.role = role or "viewer"
                     
-                    # Also set StreamlitAuth session
-                    StreamlitAuth.login(
+                    # Also set StreamlitAuth session (creates persistent session)
+                    token = StreamlitAuth.login(
                         user_id=username,
                         username=username,
                         email="",
                         roles=[role or "viewer"]
                     )
+                    
+                    st.session_state.session_token = token
                     
                     st.success(f"✅ Welcome {username}!")
                     
@@ -110,7 +144,8 @@ def main():
                     
                     time.sleep(0.5)
                     
-                    # Redirect to disease selection page after login
+                    # Redirect with session token in URL for persistence across page refreshes
+                    st.query_params["session_token"] = token
                     st.switch_page("pages/0_Disease_Selection.py")
                 else:
                     st.error("❌ Invalid username or password")

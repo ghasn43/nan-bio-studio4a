@@ -14,6 +14,9 @@ def render_sidebar_navigation():
         col1, col2 = st.columns([3, 1])
         with col1:
             if st.button("🏠 Home", use_container_width=True):
+                # Pass session token in URL if available
+                if st.session_state.get("session_token"):
+                    st.query_params["session_token"] = st.session_state.session_token
                 st.switch_page("pages/0_Disease_Selection.py")
         
         st.markdown("---")
@@ -29,8 +32,9 @@ def render_sidebar_navigation():
         st.markdown("---")
         
         if st.button("🔐 Logout", use_container_width=True):
-            st.session_state.logged_in = False
-            st.session_state.username = None
+            from streamlit_auth import StreamlitAuth
+            StreamlitAuth.logout()
+            st.query_params.clear()
             st.rerun()
 
 
@@ -52,6 +56,9 @@ def render_ml_training_menu():
             
             for page_label, page_path in ml_pages:
                 if st.button(page_label, use_container_width=True, key=f"ml_{page_path}"):
+                    # Pass session token in URL if available
+                    if st.session_state.get("session_token"):
+                        st.query_params["session_token"] = st.session_state.session_token
                     st.switch_page(page_path)
 
 

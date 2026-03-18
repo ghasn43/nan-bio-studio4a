@@ -19,10 +19,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "biotech-lab-main"))
 
 st.set_page_config(page_title="Trial History", layout="wide")
 
-# Check if user is logged in
-if not st.session_state.get("logged_in"):
-    st.warning("⚠️ Please log in first")
-    st.info("Return to the login page to continue.")
+# ============================================================
+# SESSION RESTORATION & TIMEOUT CHECK
+# ============================================================
+
+from streamlit_auth import StreamlitAuth
+
+if not StreamlitAuth.require_login_with_persistence("Trial History"):
     st.stop()
 
 # ============================================================

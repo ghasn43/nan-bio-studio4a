@@ -11,9 +11,13 @@ import numpy as np
 
 st.set_page_config(page_title="AI Architecture - NanoBio Studio", layout="wide")
 
-# Check if user is logged in
-if not st.session_state.get("logged_in"):
-    st.warning("⚠️ Please log in first")
+# ============================================================
+# SESSION RESTORATION & TIMEOUT CHECK
+# ============================================================
+
+from streamlit_auth import StreamlitAuth
+
+if not StreamlitAuth.require_login_with_persistence("AI Architecture"):
     st.stop()
 
 # Render sidebar navigation
