@@ -11,9 +11,11 @@ from pathlib import Path
 import sys
 from datetime import datetime
 
+import sys
+from pathlib import Path
+
 # Ensure parent directory is on path for module imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, str(Path(__file__).parent.parent / "biotech-lab-main"))
 
 from core.scoring import compute_impact, get_recommendations, overall_score_from_impact
 from utils.pdf_generator import generate_trial_pdf, get_next_trial_id

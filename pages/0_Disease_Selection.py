@@ -7,7 +7,6 @@ from pathlib import Path
 
 # Ensure parent directory is on path for module imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, str(Path(__file__).parent.parent / "biotech-lab-main"))
 
 st.set_page_config(page_title="Disease & Drug Selection", layout="wide")
 

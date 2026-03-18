@@ -8,9 +8,11 @@ from pathlib import Path
 import plotly.graph_objects as go
 import importlib
 
+from pathlib import Path
+import sys
+
 # Ensure parent directory is on path for module imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, str(Path(__file__).parent.parent / "biotech-lab-main"))
 
 from core.scoring import compute_impact, get_recommendations, overall_score_from_impact
 
