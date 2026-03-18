@@ -56,7 +56,8 @@ if st.session_state.get("session_token"):
 if not st.session_state.get("disease_selected"):
     st.warning("⚠️ Please select a disease first")
     st.info("Redirecting to disease selection...")
-    st.switch_page("pages/0_Disease_Selection.py")
+    from streamlit_auth import switch_page_with_token
+    switch_page_with_token("pages/0_Disease_Selection.py")
 
 # Initialize design dictionary in session state
 if "design" not in st.session_state:
@@ -682,12 +683,14 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button("← Back to Disease Selection", use_container_width=True):
-        st.switch_page("pages/0_Disease_Selection.py")
+        from streamlit_auth import switch_page_with_token
+        switch_page_with_token("pages/0_Disease_Selection.py")
 
 with col2:
     if st.button("Next: Run Simulation →", type="primary", use_container_width=True):
         st.session_state.parameters_configured = True
-        st.switch_page("pages/4_Run_Simulation.py")
+        from streamlit_auth import switch_page_with_token
+        switch_page_with_token("pages/4_Run_Simulation.py")
 
 with col3:
     if st.button("Save Design", use_container_width=True):

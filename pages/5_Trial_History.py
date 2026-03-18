@@ -677,13 +677,16 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button("Back to Simulation", use_container_width=True):
-        st.switch_page("pages/4_Run_Simulation.py")
+        from streamlit_auth import switch_page_with_token
+        switch_page_with_token("pages/4_Run_Simulation.py")
 
 with col2:
     if st.button("New Trial", use_container_width=True):
-        st.switch_page("pages/3_Design_Parameters.py")
+        from streamlit_auth import switch_page_with_token
+        switch_page_with_token("pages/3_Design_Parameters.py")
 
 with col3:
     if st.button("Next: AI Co-Designer", use_container_width=True):
-        st.switch_page("pages/9_AI_Co_Designer.py")
+        from streamlit_auth import switch_page_with_token
+        switch_page_with_token("pages/9_AI_Co_Designer.py")
 

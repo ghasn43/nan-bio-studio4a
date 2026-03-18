@@ -55,7 +55,8 @@ if st.session_state.get("session_token"):
 if not st.session_state.get("parameters_configured"):
     st.warning("⚠️ Please configure design parameters first")
     st.info("Redirecting to design parameters...")
-    st.switch_page("pages/3_Design_Parameters.py")
+    from streamlit_auth import switch_page_with_token
+    switch_page_with_token("pages/3_Design_Parameters.py")
 
 st.title("⚙️ Run Simulation")
 st.caption("Step 3: Simulate nanoparticle delivery performance")
@@ -645,7 +646,8 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button("← Back to Design Parameters", use_container_width=True):
-        st.switch_page("pages/3_Design_Parameters.py")
+        from streamlit_auth import switch_page_with_token
+        switch_page_with_token("pages/3_Design_Parameters.py")
 
 with col2:
     if st.button("Save Simulation Results", use_container_width=True):
@@ -654,4 +656,5 @@ with col2:
 with col3:
     if st.button("Next: AI Co-Designer →", use_container_width=True):
         st.session_state.simulation_completed = True
-        st.switch_page("pages/9_AI_Co_Designer.py")
+        from streamlit_auth import switch_page_with_token
+        switch_page_with_token("pages/9_AI_Co_Designer.py")

@@ -128,13 +128,15 @@ col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("← Back to Home", use_container_width=True):
         st.session_state.current_tab = "🏠 Home"
-        st.switch_page("pages/2_Home.py")
+        from streamlit_auth import switch_page_with_token
+        switch_page_with_token("pages/2_Home.py")
 
 with col2:
     if st.session_state.get("selected_disease") and st.session_state.get("selected_drug"):
         if st.button("Next: Design Parameters →", type="primary", use_container_width=True):
             st.session_state.disease_selected = True
-            st.switch_page("pages/3_Design_Parameters.py")
+            from streamlit_auth import switch_page_with_token
+            switch_page_with_token("pages/3_Design_Parameters.py")
     else:
         st.button("Next: Design Parameters →", disabled=True, use_container_width=True)
 

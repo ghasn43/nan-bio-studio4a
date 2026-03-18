@@ -394,3 +394,18 @@ def show_user_info():
             if st.button("Logout", key="logout_btn"):
                 StreamlitAuth.logout()
                 st.rerun()
+
+
+def switch_page_with_token(page_path: str):
+    """
+    Switch to another page while maintaining session token in URL.
+    
+    Usage:
+        from streamlit_auth import switch_page_with_token
+        
+        if st.button("Next"):
+            switch_page_with_token("pages/next_page.py")
+    """
+    if st.session_state.get("session_token"):
+        st.query_params["session_token"] = st.session_state.session_token
+    st.switch_page(page_path)
