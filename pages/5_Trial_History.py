@@ -22,7 +22,7 @@ st.set_page_config(page_title="Trial History", layout="wide")
 # Check if user is logged in
 if not st.session_state.get("logged_in"):
     st.warning("⚠️ Please log in first")
-    st.switch_page("Login.py")
+    st.switch_page("../Login.py")
 
 # ============================================================
 # HELPER FUNCTIONS FOR EXPORT
@@ -129,7 +129,15 @@ def generate_pdf_report(trial_id: str, details: dict) -> bytes:
         # ===== EXECUTIVE SUMMARY =====
         story.append(Paragraph("Executive Summary", section_style))
         
-        overall_score = float(str(details.get('Overall Score', 0)).split('/')[0]) if '/' in str(details.get('Overall Score', 0)) else details.get('Overall Score', 0)
+        # Extract numeric score from string format (e.g., "89/100" or "89")
+        overall_score_str = str(details.get('Overall Score', '0'))
+        try:
+            if '/' in overall_score_str:
+                overall_score = float(overall_score_str.split('/')[0])
+            else:
+                overall_score = float(overall_score_str)
+        except (ValueError, TypeError):
+            overall_score = 0
         
         if overall_score >= 85:
             assessment = "EXCELLENT - Exceeds design criteria and demonstrates superior performance characteristics."
@@ -298,10 +306,23 @@ def generate_pdf_report(trial_id: str, details: dict) -> bytes:
 
 def generate_json_export(trial_id: str, details: dict) -> str:
     """Generate JSON export of trial data"""
+    # Convert numpy types to standard Python types
+    def convert_types(obj):
+        """Convert numpy/pandas types to native Python types"""
+        if hasattr(obj, 'item'):  # numpy scalar
+            return obj.item()
+        elif isinstance(obj, dict):
+            return {k: convert_types(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [convert_types(item) for item in obj]
+        return obj
+    
+    converted_details = convert_types(details)
+    
     return json.dumps({
         "trial_id": trial_id,
         "timestamp": datetime.now().isoformat(),
-        "details": details
+        "details": converted_details
     }, indent=2)
 
 
@@ -334,22 +355,59 @@ st.divider()
 # GENERATE ALL TRIAL DATA (used across multiple tabs)
 # ============================================================
 
-num_trials = 25  # Display all trials, not just 5
+# Get hardcoded trials (T-001 to T-030)
+hardcoded_trial_data = pd.DataFrame({
+    "Trial ID": ["T-001", "T-002", "T-003", "T-004", "T-005", "T-006", "T-007", "T-008", "T-009", "T-010",
+                 "T-011", "T-012", "T-013", "T-014", "T-015", "T-016", "T-017", "T-018", "T-019", "T-020",
+                 "T-021", "T-022", "T-023", "T-024", "T-025", "T-026", "T-027", "T-028", "T-029", "T-030"],
+    "Date": ["2026-02-05", "2026-02-06", "2026-02-08", "2026-02-10", "2026-02-12", "2026-02-15", "2026-02-18", "2026-02-20", "2026-02-22", "2026-02-25",
+             "2026-02-28", "2026-03-02", "2026-03-05", "2026-03-08", "2026-03-10", "2026-03-12", "2026-03-13", "2026-03-14", "2026-03-15", "2026-03-16",
+             "2026-03-16", "2026-03-17", "2026-03-17", "2026-03-17", "2026-03-18", "2026-03-18", "2026-03-18", "2026-03-18", "2026-03-18", "2026-03-18"],
+    "Disease": ["HCC"] * 30,
+    "Material": ["LNP-v1", "LNP-v2", "LNP-v2", "Polymer-v1", "Gold-v1", "LNP-v3", "Lipid-A", "Lipid-B", "Polymer-v2", "Mixed-v1",
+                 "LNP-v4", "Silica-v1", "LNP-v5", "CaP-v1", "LNP-v6", "Polymer-v3", "PEG-LNP-v1", "Protein-v1", "LNP-v7", "LNP-v8",
+                 "Polymer-v4", "LNP-v9", "Gold-v2", "Mixed-v2", "LNP-v10", "Lipid-C", "Polymer-v5", "Silica-v2", "LNP-v11", "LNP-v12"],
+    "Size (nm)": [85, 95, 100, 110, 75, 90, 88, 92, 105, 98,
+                  80, 120, 95, 100, 85, 110, 100, 115, 90, 95,
+                  105, 100, 70, 102, 100, 88, 108, 125, 95, 100],
+    "Status": ["✅ Complete"] * 30,
+    "Delivery %": [82, 85, 87, 78, 81, 84, 83, 86, 79, 82,
+                   85, 76, 87, 84, 88, 77, 89, 75, 86, 85,
+                   80, 88, 82, 83, 87, 81, 84, 72, 89, 90],
+    "Overall Score": ["85/100", "87/100", "89/100", "72/100", "84/100", "86/100", "87/100", "88/100", "75/100", "83/100",
+                      "87/100", "68/100", "88/100", "85/100", "91/100", "73/100", "92/100", "65/100", "87/100", "86/100",
+                      "81/100", "90/100", "85/100", "86/100", "91/100", "88/100", "86/100", "63/100", "92/100", "93/100"],
+})
 
-trial_ids = [f"TRIAL-{i:03d}" for i in range(1, num_trials + 1)]
-materials = ["Lipid NP", "PLGA", "Gold NP", "Chitosan", "Polymer"]
-statuses = ["✅ Complete", "⚙️ Running", "❌ Failed"]
+# Get newly created trials from Run Simulation session
+new_trials_list = st.session_state.get("trial_history", [])
 
-trials_data = {
-    "Trial ID": trial_ids,
-    "Date": [(datetime.now() - timedelta(hours=i*6)).strftime("%Y-%m-%d %H:%M") for i in range(num_trials)],
-    "Disease": ["HCC"] * num_trials,
-    "Material": [materials[i % len(materials)] for i in range(num_trials)],
-    "Size (nm)": [80 + (i * 2) % 60 for i in range(num_trials)],
-    "Status": [statuses[i % len(statuses)] for i in range(num_trials)],
-    "Delivery %": [50 + (i * 3) % 50 for i in range(num_trials)],
-    "Overall Score": [60 + (i * 2) % 40 if statuses[i % len(statuses)] == "✅ Complete" else "In Progress" for i in range(num_trials)],
-}
+# Convert newly created trials to DataFrame format if they exist
+if new_trials_list:
+    new_trials_data = []
+    for trial in new_trials_list:
+        design = trial.get("design", {})
+        results = trial.get("results", {})
+        new_trials_data.append({
+            "Trial ID": trial.get("trial_id", "N/A"),
+            "Date": trial.get("date", "N/A"),
+            "Disease": "HCC",
+            "Material": design.get("Material", "N/A"),
+            "Size (nm)": design.get("Size", "N/A"),
+            "Status": "✅ Complete",
+            "Delivery %": float(results.get("delivery_efficiency", "0%").replace("%", "")),
+            "Overall Score": results.get("overall_score", "N/A"),
+        })
+    
+    new_trials_df = pd.DataFrame(new_trials_data)
+    # Combine hardcoded and new trials
+    trials_data = pd.concat([hardcoded_trial_data, new_trials_df], ignore_index=True)
+else:
+    trials_data = hardcoded_trial_data
+
+# Get all trial IDs for selection
+trial_ids = trials_data["Trial ID"].tolist()
+num_trials = len(trials_data)
 
 # ============================================================
 # TABS FOR DIFFERENT VIEWS
@@ -366,7 +424,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.subheader("Recent Design Trials")
     
-    df_trials = pd.DataFrame(trials_data)
+    df_trials = trials_data.copy()
     
     st.dataframe(df_trials, use_container_width=True, hide_index=True)
     
@@ -376,23 +434,54 @@ with tab1:
     with col1:
         st.metric("Total Trials", num_trials, f"This month: {num_trials}")
     with col2:
-        completed = sum(1 for s in trials_data["Status"] if "Complete" in s)
+        completed = sum(1 for s in trials_data["Status"] if "Complete" in str(s))
         st.metric("Success Rate", f"{int(completed/num_trials*100)}%", f"{completed}/{num_trials} completed")
     with col3:
-        st.metric("Best Score", "92/100", "TRIAL-003")
+        # Find best score
+        try:
+            scores = [int(s.split("/")[0]) for s in trials_data["Overall Score"] if isinstance(s, str) and "/" in s]
+            if scores:
+                best_score = max(scores)
+                best_trial = trials_data[trials_data["Overall Score"] == f"{best_score}/100"]["Trial ID"].values[0]
+                st.metric("Best Score", f"{best_score}/100", best_trial)
+            else:
+                st.metric("Best Score", "N/A", "N/A")
+        except:
+            st.metric("Best Score", "N/A", "N/A")
 
 # TAB 2: TRIAL DETAILS
 with tab2:
     st.subheader("Trial Details & Comparison")
     
-    # Select trial to view (from all trials, not just 5)
+    # Select trial to view (from all trials)
     trial_id = st.selectbox("Select Trial", trial_ids)
     
     st.markdown(f"### {trial_id} - Detailed Report")
     
-    # Mock trial details
-    trial_details = {
-        "TRIAL-001": {
+    # Get trial data from the DataFrame
+    trial_row = trials_data[trials_data["Trial ID"] == trial_id]
+    
+    if not trial_row.empty:
+        trial_info = trial_row.iloc[0]
+        
+        # Create details dictionary from trial data
+        details = {
+            "Disease": trial_info.get("Disease", "HCC"),
+            "Drug": "Sorafenib",
+            "Material": trial_info.get("Material", "Lipid NP"),
+            "Size": trial_info.get("Size (nm)", 100),
+            "Charge": -5,
+            "Encapsulation": 85,
+            "Delivery": trial_info.get("Delivery %", 87.5),
+            "Toxicity": 0.8,
+            "Cost": 75,
+            "Overall Score": str(trial_info.get("Overall Score", "N/A")).split("/")[0] if "/" in str(trial_info.get("Overall Score", "")) else 0,
+            "Status": trial_info.get("Status", "Complete"),
+            "Date": trial_info.get("Date", "N/A"),
+        }
+    else:
+        # Fallback if trial not found
+        details = {
             "Disease": "HCC",
             "Drug": "Sorafenib",
             "Material": "Lipid NP",
@@ -401,14 +490,11 @@ with tab2:
             "Encapsulation": 85,
             "Delivery": 87.5,
             "Toxicity": 0.8,
-            "Cost": 88,
+            "Cost": 75,
             "Overall Score": 89,
             "Status": "Complete",
-            "Date": "2026-03-17 14:30"
+            "Date": "N/A",
         }
-    }
-    
-    details = trial_details.get(trial_id, trial_details["TRIAL-001"])
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -492,18 +578,26 @@ with tab3:
             "Trial": trials_data["Trial ID"],
             "Score": trials_data["Overall Score"]
         })
-        # Remove non-numeric scores for charting
-        trend_data_numeric = trend_data[trend_data["Score"] != "In Progress"].copy()
-        trend_data_numeric["Score"] = pd.to_numeric(trend_data_numeric["Score"])
+        # Extract numeric scores (from "85/100" format)
+        trend_data["Score"] = trend_data["Score"].apply(lambda x: int(str(x).split("/")[0]) if "/" in str(x) else (int(x) if str(x).isdigit() else 0))
         
-        st.line_chart(trend_data_numeric.set_index("Trial"))
+        st.line_chart(trend_data.set_index("Trial"))
     
     with col2:
         st.markdown("### Delivery Efficiency vs Toxicity")
         
+        # Extract numeric scores from "89/100" format
+        toxicity_vals = []
+        for score in trials_data["Overall Score"]:
+            try:
+                numeric_score = int(str(score).split("/")[0]) if "/" in str(score) else int(score)
+                toxicity_vals.append(round(10 - numeric_score/10, 1))
+            except (ValueError, TypeError):
+                toxicity_vals.append(0)
+        
         scatter_data = pd.DataFrame({
             "Delivery %": trials_data["Delivery %"],
-            "Toxicity": [round(10 - x/10, 1) if x != "In Progress" else 0 for x in trials_data["Overall Score"]]
+            "Toxicity": toxicity_vals
         })
         
         st.scatter_chart(scatter_data)

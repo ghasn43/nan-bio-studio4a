@@ -161,18 +161,28 @@ with tab1:
             # GENERATE TRIAL ID AND STORE RESULTS
             # ============================================================
             
-            # Get trial history to generate next ID
+            # Get ALL trial IDs - both new and from hardcoded history
             trial_history = st.session_state.get("trial_history", [])
-            existing_trial_ids = [t.get("trial_id", "") for t in trial_history]
+            session_trial_ids = [t.get("trial_id", "") for t in trial_history]
+            
+            # Pre-existing trials from the hardcoded DataFrame in Trial History tab
+            hardcoded_trial_ids = [
+                "T-001", "T-002", "T-003", "T-004", "T-005", "T-006", "T-007", "T-008", "T-009", "T-010",
+                "T-011", "T-012", "T-013", "T-014", "T-015", "T-016", "T-017", "T-018", "T-019", "T-020",
+                "T-021", "T-022", "T-023", "T-024", "T-025", "T-026", "T-027", "T-028", "T-029", "T-030"
+            ]
+            
+            # Combine all trial IDs
+            all_trial_ids = hardcoded_trial_ids + session_trial_ids
             
             # Generate next trial ID
-            new_trial_id = get_next_trial_id(existing_trial_ids)
+            new_trial_id = get_next_trial_id(all_trial_ids)
             
             # Create trial data
             trial_result = {
                 "trial_id": new_trial_id,
                 "trial_name": f"Simulation {new_trial_id}",
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "date": datetime.now().strftime("%Y-%m-%d"),
                 "design": st.session_state.get("design", {}),
                 "sim_settings": {
                     "duration": sim_duration,
@@ -416,8 +426,8 @@ with tab5:
     
     st.markdown("### Your Previous Simulations")
     
-    # Sample trial history data - All trials
-    trial_data = pd.DataFrame({
+    # Hardcoded trial history data (T-001 to T-030)
+    hardcoded_trial_data = pd.DataFrame({
         "Trial ID": ["T-001", "T-002", "T-003", "T-004", "T-005", "T-006", "T-007", "T-008", "T-009", "T-010",
                      "T-011", "T-012", "T-013", "T-014", "T-015", "T-016", "T-017", "T-018", "T-019", "T-020",
                      "T-021", "T-022", "T-023", "T-024", "T-025", "T-026", "T-027", "T-028", "T-029", "T-030"],
@@ -441,6 +451,32 @@ with tab5:
                   "81/100", "90/100", "85/100", "86/100", "91/100", "88/100", "86/100", "63/100", "92/100", "93/100"],
         "Status": ["Completed"] * 30
     })
+    
+    # Get newly created trials from session state
+    new_trials_list = st.session_state.get("trial_history", [])
+    
+    # Convert newly created trials to DataFrame format
+    if new_trials_list:
+        new_trials_data = []
+        for trial in new_trials_list:
+            design = trial.get("design", {})
+            results = trial.get("results", {})
+            new_trials_data.append({
+                "Trial ID": trial.get("trial_id", "N/A"),
+                "Date": trial.get("date", "N/A"),
+                "Design": design.get("Material", "N/A"),
+                "Size (nm)": str(design.get("Size", "N/A")),
+                "Efficiency": results.get("delivery_efficiency", "N/A"),
+                "Toxicity": results.get("cytotoxicity", "N/A"),
+                "Score": results.get("overall_score", "N/A"),
+                "Status": "Completed"
+            })
+        
+        new_trials_df = pd.DataFrame(new_trials_data)
+        # Combine hardcoded and new trials
+        trial_data = pd.concat([hardcoded_trial_data, new_trials_df], ignore_index=True)
+    else:
+        trial_data = hardcoded_trial_data
     
     # Display with pagination
     st.markdown(f"**Total Trials: {len(trial_data)}**")
@@ -472,7 +508,8 @@ with tab5:
         filtered_data = filtered_data[filtered_data["Design"].str.contains(design_filter, case=False, na=False)]
     
     if len(date_range) == 2:
-        filtered_data["Date"] = pd.to_datetime(filtered_data["Date"])
+        # Both hardcoded and new trials now use same date format "%Y-%m-%d"
+        filtered_data["Date"] = pd.to_datetime(filtered_data["Date"], format="%Y-%m-%d")
         filtered_data = filtered_data[(filtered_data["Date"] >= pd.to_datetime(date_range[0])) & 
                                       (filtered_data["Date"] <= pd.to_datetime(date_range[1]))]
     
