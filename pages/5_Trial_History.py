@@ -25,6 +25,14 @@ st.set_page_config(page_title="Trial History", layout="wide")
 from streamlit_auth import StreamlitAuth
 
 if not StreamlitAuth.require_login_with_persistence("Trial History"):
+    st.info("You need to be logged in to access this page.")
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("🔐 Go to Login", type="primary", use_container_width=True):
+            st.query_params.clear()
+            st.switch_page("Login.py")
+    
     st.stop()
 
 # ============================================================

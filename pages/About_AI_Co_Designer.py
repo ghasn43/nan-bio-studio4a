@@ -11,6 +11,14 @@ st.title("📊 About AI Co Designer")
 # Check if user is logged in
 if not st.session_state.get("logged_in"):
     st.warning("⚠️ Please log in first")
+    st.info("You need to be logged in to access this page.")
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("🔐 Go to Login", type="primary", use_container_width=True):
+            st.query_params.clear()
+            st.switch_page("Login.py")
+    
     st.stop()
 
 st.info("""

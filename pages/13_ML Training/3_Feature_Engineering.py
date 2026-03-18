@@ -18,6 +18,14 @@ st.set_page_config(page_title="Feature Engineering - NanoBio Studio", layout="wi
 from streamlit_auth import StreamlitAuth
 
 if not StreamlitAuth.require_login_with_persistence("Feature Engineering"):
+    st.info("You need to be logged in to access this page.")
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("🔐 Go to Login", type="primary", use_container_width=True):
+            st.query_params.clear()
+            st.switch_page("Login.py")
+    
     st.stop()
 
 # Render sidebar navigation

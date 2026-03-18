@@ -43,6 +43,14 @@ logged_in = st.session_state.get("logged_in") or st.session_state.get("authentic
 
 if not logged_in:
     st.warning("⚠️ Please log in first")
+    st.info("You need to be logged in to access this page.")
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("🔐 Go to Login", type="primary", use_container_width=True):
+            st.query_params.clear()
+            st.switch_page("Login.py")
+    
     st.stop()
 
 # Check for session timeout
@@ -50,6 +58,13 @@ if st.session_state.get("session_token"):
     token = st.session_state.session_token
     if not check_session_timeout(token):
         st.warning("⏰ Your session has expired due to inactivity (15 minutes). Please log in again.")
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("🔐 Go to Login", type="primary", use_container_width=True):
+                st.query_params.clear()
+                st.switch_page("Login.py")
+        
         StreamlitAuth.logout()
         st.stop()
 
