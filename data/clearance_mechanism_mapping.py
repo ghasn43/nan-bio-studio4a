@@ -133,7 +133,7 @@ CLEARANCE_BY_CHARGE = {
             "Moderate liver accumulation"
         ],
         "suitable_applications": ["Most therapeutic applications"],
-        "unsuitable_applications": ["None (universal)")
+        "unsuitable_applications": ["None (universal)"]
     },
     "Anionic (- charge)": {
         "protein_corona_formation": "Moderate",
