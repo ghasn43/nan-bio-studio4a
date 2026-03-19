@@ -701,31 +701,41 @@ with tab6:
     
     st.markdown("### 🗑️ Delete Trials")
     
-    # Get list of all trials that can be deleted (only new trials, not hardcoded)
-    deletable_trials = st.session_state.get("trial_history", [])
+    # Get all available trials from the displayed table
+    all_trial_ids = trial_data["Trial ID"].tolist()
     
-    if deletable_trials:
-        st.info(f"📌 **Note:** You can delete {len(deletable_trials)} newly created trial(s). Hardcoded reference trials (T-001 to T-030) cannot be deleted.")
-        
-        # Create columns for delete interface
-        delete_col1, delete_col2 = st.columns([3, 1])
-        
-        with delete_col1:
-            # Multiselect to choose trials to delete
-            deletable_trial_ids = [trial.get("trial_id", "N/A") for trial in deletable_trials]
-            trials_to_delete = st.multiselect(
-                "Select trials to delete:",
-                options=deletable_trial_ids,
-                key="delete_trials_select",
-                help="Choose one or more trials you want to remove from history"
-            )
-        
-        with delete_col2:
-            # Delete button
-            if st.button("🗑️ Delete Selected", type="secondary", use_container_width=True):
-                if trials_to_delete:
+    # Get newly created trials that can be deleted
+    deletable_trials = st.session_state.get("trial_history", [])
+    deletable_trial_ids = [trial.get("trial_id", "N/A") for trial in deletable_trials]
+    
+    # Separate deletable and protected trials
+    protected_trials = [t for t in all_trial_ids if t not in deletable_trial_ids]
+    
+    st.info(f"📌 **Summary:** {len(deletable_trial_ids)} deletable trial(s) | {len(protected_trials)} protected reference trial(s)")
+    
+    # Create columns for delete interface
+    delete_col1, delete_col2 = st.columns([3, 1])
+    
+    with delete_col1:
+        # Multiselect to choose trials to delete from ALL trials
+        selected_for_deletion = st.multiselect(
+            "Select trials to delete:",
+            options=all_trial_ids,
+            key="delete_trials_select",
+            help="Choose trials to delete. Only newly created trials can be deleted."
+        )
+    
+    with delete_col2:
+        # Delete button
+        if st.button("🗑️ Delete Selected", type="secondary", use_container_width=True):
+            if selected_for_deletion:
+                # Check which selected trials are actually deletable
+                can_delete = [t for t in selected_for_deletion if t in deletable_trial_ids]
+                cannot_delete = [t for t in selected_for_deletion if t not in deletable_trial_ids]
+                
+                if can_delete:
                     # Show confirmation message
-                    st.warning(f"⚠️ You are about to delete {len(trials_to_delete)} trial(s). This action cannot be undone.")
+                    st.warning(f"⚠️ You are about to delete {len(can_delete)} trial(s). This action cannot be undone.")
                     
                     col_confirm1, col_confirm2 = st.columns(2)
                     
@@ -734,55 +744,68 @@ with tab6:
                             # Delete selected trials from session state
                             updated_trials = [
                                 trial for trial in st.session_state.get("trial_history", [])
-                                if trial.get("trial_id") not in trials_to_delete
+                                if trial.get("trial_id") not in can_delete
                             ]
                             st.session_state.trial_history = updated_trials
                             
-                            st.success(f"✅ Successfully deleted {len(trials_to_delete)} trial(s)!")
+                            delete_msg = f"✅ Successfully deleted {len(can_delete)} trial(s)!"
+                            if cannot_delete:
+                                delete_msg += f"\n\n⚠️ {len(cannot_delete)} trial(s) are protected and cannot be deleted: {', '.join(cannot_delete)}"
+                            
+                            st.success(delete_msg)
                             st.rerun()
                     
                     with col_confirm2:
                         if st.button("❌ Cancel", type="secondary", key="cancel_delete"):
                             st.info("Deletion cancelled.")
-                else:
-                    st.warning("Please select at least one trial to delete.")
-    else:
-        st.info("ℹ️ No newly created trials yet. Create simulations to see delete options.")
-    
-    st.divider()
-    
-    # Quick delete button for individual trials in the dataframe
-    st.markdown("### Quick Delete from List")
-    st.caption("Or select individual trials below to delete them one at a time")
-    
-    col_quick1, col_quick2 = st.columns([3, 1])
-    
-    with col_quick1:
-        quick_delete_trial = st.selectbox(
-            "Select a trial to delete:",
-            options=deletable_trial_ids if deletable_trials else ["No trials to delete"],
-            key="quick_delete_select",
-            help="Choose a single trial to delete immediately after confirmation"
-        )
-    
-    with col_quick2:
-        if st.button("🗑️ Quick Delete", type="secondary", use_container_width=True):
-            if quick_delete_trial and quick_delete_trial != "No trials to delete":
-                # Show confirmation
-                col_qc1, col_qc2 = st.columns(2)
-                with col_qc1:
-                    if st.button(f"✅ Delete {quick_delete_trial}?", type="secondary", key="quick_confirm"):
-                        updated_trials = [
-                            trial for trial in st.session_state.get("trial_history", [])
-                            if trial.get("trial_id") != quick_delete_trial
-                        ]
-                        st.session_state.trial_history = updated_trials
-                        st.success(f"✅ Trial {quick_delete_trial} deleted!")
-                        st.rerun()
                 
-                with col_qc2:
-                    if st.button("❌ Cancel", type="secondary", key="quick_cancel"):
-                        st.info("Deletion cancelled.")
+                if cannot_delete:
+                    st.warning(f"🔒 {len(cannot_delete)} selected trial(s) are protected reference trials and cannot be deleted: {', '.join(cannot_delete)}")
+            else:
+                st.warning("Please select at least one trial to delete.")
+    
+    if all_trial_ids:
+        st.divider()
+        
+        st.markdown("### Quick Delete")
+        st.caption(f"Showing all {len(all_trial_ids)} trials from history")
+        
+        col_quick1, col_quick2 = st.columns([3, 1])
+        
+        with col_quick1:
+            # Create formatted options showing which trials are deletable
+            quick_delete_trial = st.selectbox(
+                "Select a trial to delete:",
+                options=all_trial_ids,
+                key="quick_delete_select",
+                help="Choose a single trial to delete immediately after confirmation"
+            )
+        
+        with col_quick2:
+            if st.button("🗑️ Quick Delete", type="secondary", use_container_width=True):
+                if quick_delete_trial:
+                    is_deletable = quick_delete_trial in deletable_trial_ids
+                    
+                    if is_deletable:
+                        # Show confirmation
+                        col_qc1, col_qc2 = st.columns(2)
+                        with col_qc1:
+                            if st.button(f"✅ Delete {quick_delete_trial}?", type="secondary", key="quick_confirm"):
+                                updated_trials = [
+                                    trial for trial in st.session_state.get("trial_history", [])
+                                    if trial.get("trial_id") != quick_delete_trial
+                                ]
+                                st.session_state.trial_history = updated_trials
+                                st.success(f"✅ Trial {quick_delete_trial} deleted!")
+                                st.rerun()
+                        
+                        with col_qc2:
+                            if st.button("❌ Cancel", type="secondary", key="quick_cancel"):
+                                st.info("Deletion cancelled.")
+                    else:
+                        st.warning(f"🔒 Trial {quick_delete_trial} is a protected reference trial and cannot be deleted.")
+    else:
+        st.info("ℹ️ No trials available to delete.")
 
 st.divider()
 
