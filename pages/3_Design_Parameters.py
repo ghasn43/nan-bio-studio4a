@@ -337,10 +337,17 @@ with tab1:
                 st.warning(f"⚠️ **Not typically recommended** for {selected_drug}. Consider changing material.")
         else:
             # Fallback if no drug selected
+            material_keys = list(material_properties.keys())
+            current_material = d.get("Material", "Lipid NP")
+            try:
+                material_index = material_keys.index(current_material)
+            except ValueError:
+                material_index = 0
+            
             d["Material"] = st.selectbox(
                 "Select Material",
-                list(material_properties.keys()),
-                index=list(material_properties.keys()).index(d.get("Material", "Lipid NP"))
+                material_keys,
+                index=material_index
             )
         
         material_info = material_properties.get(d["Material"], {})
@@ -355,10 +362,17 @@ with tab1:
                 st.markdown(f"**Best Payload:** {mat_desc.get('best_payload', 'N/A')}")
     
     with col2:
+        target_options = ["Liver Cells", "Tumor", "Brain", "Lung", "Kidney", "Spleen", "Bone"]
+        current_target = d.get("Target", "Liver Cells")
+        try:
+            target_index = target_options.index(current_target)
+        except ValueError:
+            target_index = 0
+        
         d["Target"] = st.selectbox(
             "Target Organ/Tissue",
-            ["Liver Cells", "Tumor", "Brain", "Lung", "Kidney", "Spleen", "Bone"],
-            index=["Liver Cells", "Tumor", "Brain", "Lung", "Kidney", "Spleen", "Bone"].index(d.get("Target", "Liver Cells"))
+            target_options,
+            index=target_index
         )
         st.caption(f"⚡ **Density**: {material_info.get('density', 'N/A')} g/cm³")
         
@@ -543,10 +557,17 @@ with tab3:
         else:
             ligand_options = get_all_ligands() + ["None"]
         
+        # Get current ligand, with safe fallback
+        current_ligand = d.get("Ligand", optimal_ligands[0] if optimal_ligands else "GalNAc")
+        try:
+            ligand_index = ligand_options.index(current_ligand)
+        except ValueError:
+            ligand_index = 0  # Default to first option if not found
+        
         d["Ligand"] = st.selectbox(
             "🎯 Primary Targeting Ligand",
             ligand_options,
-            index=ligand_options.index(d.get("Ligand", optimal_ligands[0] if optimal_ligands else "GalNAc"))
+            index=ligand_index
         )
         
         # Always render the slider to persist values in session state
@@ -700,10 +721,17 @@ with tab3:
     
     st.markdown("### 💊 Release Profile")
     
+    release_options = ["Immediate", "Sustained (1 week)", "Sustained (2 weeks)", "Sustained (1 month)"]
+    current_release = d.get("ReleaseProfile", "Sustained (1 week)")
+    try:
+        release_index = release_options.index(current_release)
+    except ValueError:
+        release_index = 1  # Default to "Sustained (1 week)"
+    
     d["ReleaseProfile"] = st.selectbox(
         "Release Profile",
-        ["Immediate", "Sustained (1 week)", "Sustained (2 weeks)", "Sustained (1 month)"],
-        index=["Immediate", "Sustained (1 week)", "Sustained (2 weeks)", "Sustained (1 month)"].index(d.get("ReleaseProfile", "Sustained (1 week)"))
+        release_options,
+        index=release_index
     )
     
     d["ReleasePredictability"] = st.slider(
