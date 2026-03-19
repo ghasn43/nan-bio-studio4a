@@ -62,6 +62,18 @@ import core.scoring
 importlib.reload(core.scoring)
 from core.scoring import compute_impact, get_recommendations, overall_score_from_impact
 
+# ============================================================
+# SPRINT 1: Import blood safety & charge predictors
+# ============================================================
+from components.osmolarity_calculator import calculate_osmolarity, display_osmolarity_widget
+from components.blood_safety_assessor import calculate_hemolysis_risk, display_hemolysis_widget
+from components.charge_predictors import (
+    predict_improved_blood_half_life,
+    calculate_isoelectric_point,
+    display_halflife_widget,
+    display_pI_widget
+)
+
 st.set_page_config(page_title="Design Parameters", layout="wide")
 
 # ============================================================
@@ -229,7 +241,7 @@ st.divider()
 # TABS FOR DIFFERENT PARAMETER GROUPS
 # ============================================================
 
-tab1, tab2, tab3, tab4 = st.tabs(["🧬 Core Properties", "🎨 Surface & Chemistry", "🎯 Targeting", "📊 Scoring"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🧬 Core Properties", "🎨 Surface & Chemistry", "🎯 Targeting", "📊 Scoring", "🩸 Blood Safety (Sprint 1)"])
 
 # Function to display gauge chart
 def display_score_gauge(key="gauge"):
@@ -1077,6 +1089,183 @@ with tab4:
         st.metric("Delivery", f"{current_impact_custom['Delivery']:.1f}/100")
         st.metric("Toxicity", f"{current_impact_custom['Toxicity']:.1f}/10")
         st.metric("Cost Index", f"{current_impact_custom['Cost']:.1f}/100")
+
+
+# ============================================================================
+# TAB 5: SPRINT 1 BLOOD SAFETY & ADVANCED PARAMETERS
+# ============================================================================
+
+with tab5:
+    st.subheader("🩸 Sprint 1: Blood Safety & Physiological Parameters")
+    
+    st.markdown("""
+    **Advanced safety assessment** for in vivo performance.
+    
+    These parameters predict behavior in the bloodstream and help catch 
+    potentially problematic designs early.
+    """)
+    
+    st.divider()
+    
+    # ========================================
+    # 1. OSMOLARITY
+    # ========================================
+    st.markdown("### 1️⃣ Osmolarity (Cellular Toxicity)")
+    st.caption("Determines osmotic stress on cells")
+    
+    display_osmolarity_widget(d)
+    
+    st.divider()
+    
+    # ========================================
+    # 2. HEMOLYTIC ACTIVITY
+    # ========================================
+    st.markdown("### 2️⃣ Hemolytic Activity (Blood Compatibility)")
+    st.caption("Predicts red blood cell (RBC) lysis risk")
+    
+    display_hemolysis_widget(d)
+    
+    st.divider()
+    
+    # ========================================
+    # 3. BLOOD HALF-LIFE
+    # ========================================
+    st.markdown("### 3️⃣ Blood Half-Life (Circulation Time)")
+    st.caption("Multi-factor prediction: Size + PEG + Charge + Material")
+    
+    display_halflife_widget(d)
+    
+    st.divider()
+    
+    # ========================================
+    # 4. ISOELECTRIC POINT (pI)
+    # ========================================
+    st.markdown("### 4️⃣ Isoelectric Point (pH Behavior)")
+    st.caption("Predicts charge at different pH environments")
+    
+    display_pI_widget(d)
+    
+    st.divider()
+    
+    # ========================================
+    # SUMMARY ASSESSMENT
+    # ========================================
+    st.markdown("### 📋 Blood Safety Summary")
+    
+    osmolarity_result = calculate_osmolarity(d)
+    hemolysis_result = calculate_hemolysis_risk(d)
+    halflife_result = predict_improved_blood_half_life(d)
+    pI_result = calculate_isoelectric_point(d)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        osmo_status = "✅" if 250 <= osmolarity_result['osmolarity_mosm_kg'] <= 350 else "⚠️"
+        st.metric(
+            f"{osmo_status} Osmolarity",
+            f"{osmolarity_result['osmolarity_mosm_kg']:.0f} mOsm/kg",
+            help="Safe range: 250-350"
+        )
+    
+    with col2:
+        hemolysis_status = "✅" if hemolysis_result['hemolysis_score'] < 35 else "⚠️" if hemolysis_result['hemolysis_score'] < 50 else "❌"
+        st.metric(
+            f"{hemolysis_status} Hemolysis",
+            f"{hemolysis_result['hemolysis_score']:.0f}/100",
+            help="Lower is better (0 = no hemolysis)"
+        )
+    
+    with col3:
+        st.metric(
+            "🩸 Half-Life",
+            f"{halflife_result['blood_half_life_hours']:.2f} hrs",
+            help=f"Mechanism: {halflife_result['clearance_mechanism']}"
+        )
+    
+    with col4:
+        pI_risk = "✅ Low" if "Low" in pI_result['aggregation_concern'] else "🟡 Moderate" if "Moderate" in pI_result['aggregation_concern'] else "⚠️ High"
+        st.metric(
+            "📌 Aggregation",
+            pI_risk,
+            help=f"pI: {pI_result['isoelectric_point_pH']:.1f}"
+        )
+    
+    st.divider()
+    
+    # Overall safety score
+    st.markdown("### 🎯 Overall Blood Safety Score")
+    
+    # Calculate composite blood safety score (0-100)
+    safety_components = {
+        "osmolarity": 100 if 250 <= osmolarity_result['osmolarity_mosm_kg'] <= 350 else osmolarity_result.get('safety_score', 50),
+        "hemolysis": 100 - hemolysis_result['hemolysis_score'],  # Invert: high score is bad
+        "halflife": min(100, halflife_result['blood_half_life_hours'] * 20),  # 5 hrs = 100
+        "aggregation": 100 if "Low" in pI_result['aggregation_concern'] else 70 if "Moderate" in pI_result['aggregation_concern'] else 40,
+    }
+    
+    overall_blood_safety = sum(safety_components.values()) / len(safety_components)
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        fig_safety = go.Figure(data=[go.Indicator(
+            mode="gauge+number+delta",
+            value=overall_blood_safety,
+            domain={"x": [0, 1], "y": [0, 1]},
+            title={"text": "Blood Safety Score"},
+            delta={"reference": 80, "suffix": " vs target"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {"color": "darkgreen"},
+                "steps": [
+                    {"range": [0, 30], "color": "rgba(255, 100, 100, 0.3)"},
+                    {"range": [30, 60], "color": "rgba(255, 200, 0, 0.3)"},
+                    {"range": [60, 80], "color": "rgba(150, 255, 100, 0.3)"},
+                    {"range": [80, 100], "color": "rgba(100, 255, 100, 0.3)"}
+                ],
+                "threshold": {
+                    "line": {"color": "red", "width": 4},
+                    "thickness": 0.75,
+                    "value": 80
+                }
+            }
+        )])
+        
+        fig_safety.update_layout(height=350, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_safety, use_container_width=True, key=f"blood_safety_score_{overall_blood_safety:.1f}")
+    
+    with col2:
+        st.markdown("### 📊 Component Scores")
+        st.metric("Osmolarity", f"{safety_components['osmolarity']:.0f}/100")
+        st.metric("Hemolysis", f"{safety_components['hemolysis']:.0f}/100")
+        st.metric("Half-Life", f"{safety_components['halflife']:.0f}/100")
+        st.metric("Aggregation", f"{safety_components['aggregation']:.0f}/100")
+    
+    st.divider()
+    
+    # Recommendations for improvement
+    st.markdown("### 💡 Recommendations for Blood Safety")
+    
+    recommendations = []
+    
+    if not (250 <= osmolarity_result['osmolarity_mosm_kg'] <= 350):
+        recommendations.append("🔧 **Osmolarity**: Adjust based on recommendations above")
+    
+    if hemolysis_result['hemolysis_score'] > 35:
+        recommendations.append("🔧 **Hemolysis**: " + (hemolysis_result['primary_drivers'][0] if hemolysis_result['primary_drivers'] else "Reduce charge"))
+    
+    if halflife_result['blood_half_life_hours'] < 2:
+        recommendations.append(f"🔧 **Circulation**: Increase PEGylation or reduce size for extended half-life")
+    
+    if "High" in pI_result['aggregation_concern']:
+        recommendations.append(f"🔧 **Aggregation**: Risk at pH {pI_result['isoelectric_point_pH']:.1f} - Consider pH-buffering system")
+    
+    if recommendations:
+        for rec in recommendations:
+            st.warning(rec)
+    else:
+        st.success("✅ All blood safety parameters within acceptable ranges!")
+    
     
     st.divider()
     

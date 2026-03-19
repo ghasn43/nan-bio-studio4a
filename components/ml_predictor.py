@@ -17,7 +17,9 @@ class DesignToFeatureConverter:
     """Convert nanoparticle design parameters to ML-ready features"""
     
     # Feature names expected by ML models
+    # Sprint 1: Added osmolarity, hemolysis, improved_half_life, isoelectric_point
     NUMERIC_FEATURES = [
+        # Original 12 features
         "size_nm",
         "charge_mv",
         "peg_density_pct",
@@ -30,10 +32,16 @@ class DesignToFeatureConverter:
         "stability_score",
         "biodegradation_days",
         "targeting_strength",
+        # Sprint 1: New features (4 critical parameters)
+        "osmolarity_mosm_kg",
+        "hemolysis_score",
+        "blood_half_life_hours",
+        "isoelectric_point_ph",
     ]
     
     # Feature normalization ranges (min, max)
     FEATURE_RANGES = {
+        # Original ranges
         "size_nm": (50, 200),
         "charge_mv": (-50, 50),
         "peg_density_pct": (0, 100),
@@ -46,6 +54,11 @@ class DesignToFeatureConverter:
         "stability_score": (0, 100),
         "biodegradation_days": (7, 365),
         "targeting_strength": (0, 100),
+        # Sprint 1: New ranges
+        "osmolarity_mosm_kg": (200, 500),        # Safe: 250-350, acceptable: 200-400
+        "hemolysis_score": (0, 100),             # 0 = none, 100 = severe
+        "blood_half_life_hours": (0.1, 48),      # 0.1 hours to 48 hours
+        "isoelectric_point_ph": (3, 9),          # pH range for biological systems
     }
     
     @staticmethod
@@ -60,7 +73,9 @@ class DesignToFeatureConverter:
             DataFrame with single row of normalized features
         """
         try:
-            # Extract parameters with safe defaults
+            # ================================================================
+            # ORIGINAL 12 FEATURES
+            # ================================================================
             features = {
                 "size_nm": float(design.get("Size", 100)),
                 "charge_mv": float(design.get("Charge", -30)),
@@ -76,6 +91,35 @@ class DesignToFeatureConverter:
                 "targeting_strength": float(design.get("Targeting_Strength", 70)),
             }
             
+            # ================================================================
+            # SPRINT 1: NEW FEATURES (4 critical parameters)
+            # ================================================================
+            
+            # Import Sprint 1 calculators
+            from components.osmolarity_calculator import calculate_osmolarity
+            from components.blood_safety_assessor import calculate_hemolysis_risk
+            from components.charge_predictors import predict_improved_blood_half_life, calculate_isoelectric_point
+            
+            # 1. Osmolarity (0-500 mOsm/kg)
+            osmolarity_result = calculate_osmolarity(design)
+            features["osmolarity_mosm_kg"] = float(osmolarity_result.get("osmolarity_mosm_kg", 300))
+            
+            # 2. Hemolysis Score (0-100, higher = worse)
+            hemolysis_result = calculate_hemolysis_risk(design)
+            features["hemolysis_score"] = float(hemolysis_result.get("hemolysis_score", 0))
+            
+            # 3. Blood Half-Life (0.1-48 hours)
+            halflife_result = predict_improved_blood_half_life(design)
+            features["blood_half_life_hours"] = float(halflife_result.get("blood_half_life_hours", 2.0))
+            
+            # 4. Isoelectric Point (pH 3-9)
+            pI_result = calculate_isoelectric_point(design)
+            features["isoelectric_point_ph"] = float(pI_result.get("isoelectric_point_pH", 7.4))
+            
+            # ================================================================
+            # NORMALIZE FEATURES
+            # ================================================================
+            
             # Normalize features to 0-1 range
             normalized_features = {}
             for feature_name, value in features.items():
@@ -90,12 +134,14 @@ class DesignToFeatureConverter:
             # Create DataFrame with single row
             df = pd.DataFrame([normalized_features])
             
-            logger.info(f"✅ Converted design to {len(df.columns)} features")
+            logger.info(f"✅ Converted design to {len(df.columns)} features (12 original + 4 Sprint 1)")
             return df
             
         except Exception as e:
             logger.error(f"❌ Error converting design to features: {e}")
-            raise
+            # Return empty/default features on error
+            default_features = {f: 0.5 for f in DesignToFeatureConverter.NUMERIC_FEATURES}
+            return pd.DataFrame([default_features])
 
 
 class MLPredictor:
