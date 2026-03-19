@@ -23,6 +23,40 @@ from data.drug_material_mapping import (
     AVAILABLE_MATERIALS
 )
 
+# Import new critical parameter modules
+from data.surface_functionalization_mapping import (
+    get_targeting_options_for_disease,
+    get_targeting_options_for_drug,
+    get_ligand_details,
+    get_combined_targeting_recommendation,
+    get_all_ligands
+)
+
+from data.immunogenicity_pegylation_mapping import (
+    get_material_immunogenicity_profile,
+    get_disease_immunogenicity_requirements,
+    get_drug_immunogenicity_considerations,
+    get_peg_recommendation,
+    get_all_materials_ranked_by_immunogenicity
+)
+
+from data.stability_profile_mapping import (
+    get_material_stability_profile,
+    get_drug_stability_requirements,
+    get_combined_stability_recommendation,
+    get_stability_testing_protocol,
+    get_shelf_life_estimate
+)
+
+from data.clearance_mechanism_mapping import (
+    get_clearance_by_size,
+    get_clearance_by_charge,
+    get_disease_clearance_optimization,
+    get_material_clearance_profile,
+    get_predicted_organ_accumulation,
+    get_clearance_optimization_for_disease_drug_material
+)
+
 # Force reload to ensure latest version is used
 import core.scoring
 importlib.reload(core.scoring)
@@ -476,17 +510,43 @@ with tab2:
     st.markdown("### 🎯 Parameter Impact on Score")
     display_score_gauge("gauge_surface")
 
-# TAB 3: TARGETING
+# TAB 3: TARGETING & CRITICAL PARAMETERS
 with tab3:
-    st.subheader("🎯 Targeting & Ligands")
+    st.subheader("🎯 Targeting, Stability, Immunogenicity & Clearance")
+    st.caption("Critical parameters that directly impact nanoparticle efficiency, viability, and disease suitability")
     
-    col1, col2 = st.columns(2)
+    # Get context information
+    selected_disease = st.session_state.get("selected_disease", "")
+    selected_drug = st.session_state.get("selected_drug", "")
+    selected_material = d.get("Material", "Lipid NP")
+    
+    # ============================================================
+    # SUB-TAB 1: SURFACE FUNCTIONALIZATION/TARGETING
+    # ============================================================
+    
+    st.divider()
+    st.markdown("### 1️⃣ Surface Functionalization (Targeting Ligands)")
+    
+    col1, col2 = st.columns([2, 1])
     
     with col1:
+        st.info(f"**Disease Context:** {selected_disease} | **Drug:** {selected_drug}")
+        
+        # Get smart recommendations
+        targeting_rec = get_combined_targeting_recommendation(selected_disease, selected_drug)
+        optimal_ligands = targeting_rec.get("optimal", [])
+        all_options = targeting_rec.get("all_options", [])
+        
+        # If we have recommendations, prioritize them
+        if optimal_ligands:
+            ligand_options = optimal_ligands + [x for x in all_options if x not in optimal_ligands] + ["None"]
+        else:
+            ligand_options = get_all_ligands() + ["None"]
+        
         d["Ligand"] = st.selectbox(
-            "Primary Targeting Ligand",
-            ["GalNAc", "Folate", "Transferrin", "RGD Peptide", "Anti-HER2", "None"],
-            index=["GalNAc", "Folate", "Transferrin", "RGD Peptide", "Anti-HER2", "None"].index(d.get("Ligand", "GalNAc"))
+            "🎯 Primary Targeting Ligand",
+            ligand_options,
+            index=ligand_options.index(d.get("Ligand", optimal_ligands[0] if optimal_ligands else "GalNAc"))
         )
         
         # Always render the slider to persist values in session state
@@ -498,27 +558,145 @@ with tab3:
             value=int(d.get("LigandDensity", 60)),
             step=5,
             disabled=ligand_density_disabled,
-            help="Only active when a ligand is selected" if ligand_density_disabled else "Higher density = better targeting"
+            help="Only active when a ligand is selected" if ligand_density_disabled else "Higher density = better targeting, but may increase immunogenicity"
         )
     
     with col2:
-        d["Receptor"] = st.selectbox(
-            "Target Receptor",
-            ["ASGPR", "Folate Receptor", "Transferrin Receptor", "Integrin", "EGFR", "None"],
-            index=["ASGPR", "Folate Receptor", "Transferrin Receptor", "Integrin", "EGFR", "None"].index(d.get("Receptor", "ASGPR"))
-        )
+        if d["Ligand"] != "None":
+            ligand_info = get_ligand_details(d["Ligand"])
+            st.metric("Target Receptor", ligand_info.get("target_receptors", ["N/A"])[0])
+            st.metric("Binding Strength", ligand_info.get("binding_strength", "N/A"))
+            st.metric("Immunogenicity", ligand_info.get("immunogenicity", "N/A"))
+    
+    # Show ligand explanation
+    if d["Ligand"] != "None":
+        ligand_details = get_ligand_details(d["Ligand"])
+        with st.expander(f"📖 About {d['Ligand']} Targeting", expanded=False):
+            st.write(f"**Mechanism:** {ligand_details.get('mechanism', 'N/A')}")
+            st.write(f"**Best for:** {', '.join(ligand_details.get('suitable_diseases', []))}")
+            st.write(f"**Approval Status:** {ligand_details.get('approval_status', 'Unknown')}")
+    
+    st.divider()
+    
+    # ============================================================
+    # SUB-TAB 2: IMMUNOGENICITY & PEGylation
+    # ============================================================
+    
+    st.markdown("### 2️⃣ Immunogenicity & PEGylation Strategy")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        material_immuno = get_material_immunogenicity_profile(selected_material)
+        st.metric("Base Immunogenicity", material_immuno.get("base_immunogenicity", "Unknown"))
+        st.metric("MPS Recognition", material_immuno.get("mps_recognition", "Unknown"))
+        st.metric("Requires PEGylation", "Yes" if material_immuno.get("peg_responsive") else "No")
+    
+    with col2:
+        peg_rec = get_peg_recommendation(selected_material, selected_disease, selected_drug)
+        st.metric("Optimal PEG Density", peg_rec.get("peg_density", "N/A"))
+        st.metric("Expected Circulation", peg_rec.get("expected_circulation_time", "N/A"))
+        st.metric("MPS Reduction", peg_rec.get("mps_reduction", "N/A"))
+    
+    # PEGylation details
+    with st.expander("📖 PEGylation Strategy & Rationale", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Why PEGylation?**")
+            st.write(peg_rec.get("rationale", "No rationale available"))
+        with col2:
+            disease_immuno = get_disease_immunogenicity_requirements(selected_disease)
+            st.write("**Disease-Specific Considerations:**")
+            st.write(disease_immuno.get("optimal_approach", "No special considerations"))
+    
+    st.divider()
+    
+    # ============================================================
+    # SUB-TAB 3: STABILITY PROFILE
+    # ============================================================
+    
+    st.markdown("### 3️⃣ Stability Testing & Storage")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        stability_material = get_material_stability_profile(selected_material)
+        st.metric("pH Stability Range", stability_material.get("pH_stability_range", "N/A"))
+        st.metric("Optimal pH", stability_material.get("optimal_pH", "N/A"))
+        st.metric("Temperature Stability", stability_material.get("temperature_stability", "N/A"))
+    
+    with col2:
+        stability_drug = get_drug_stability_requirements(selected_drug)
+        st.metric("Drug pH Sensitivity", stability_drug.get("pH_sensitivity", "N/A"))
+        st.metric("Drug Temperature Sens.", stability_drug.get("temperature_sensitivity", "N/A"))
+        st.metric("Light Sensitive", stability_drug.get("light_sensitivity", "No"))
+    
+    combined_stability = get_combined_stability_recommendation(selected_material, selected_drug)
+    
+    with st.expander("📖 Critical Stability Concerns & Testing", expanded=False):
+        st.write("**Critical Concerns:**")
+        for concern in combined_stability.get("critical_concerns", []):
+            st.write(f"• {concern}")
         
-        # Always render the slider to persist values in session state
-        receptor_binding_disabled = d["Receptor"] == "None"
-        d["ReceptorBinding"] = st.slider(
-            "Receptor Binding Affinity (Kd, nM)",
-            min_value=0.1,
-            max_value=1000.0,
-            value=float(d.get("ReceptorBinding", 10.0)),
-            step=1.0,
-            disabled=receptor_binding_disabled,
-            help="Only active when a receptor is selected" if receptor_binding_disabled else "Lower Kd = stronger binding"
-        )
+        st.write("\n**Required Stability Tests:**")
+        for test in combined_stability.get("required_tests", []):
+            st.write(f"• {test}")
+    
+    st.divider()
+    
+    # ============================================================
+    # SUB-TAB 4: CLEARANCE MECHANISM
+    # ============================================================
+    
+    st.markdown("### 4️⃣ Clearance Mechanism & Organ Accumulation")
+    
+    # Get size for clearance calculations
+    particle_size = int(d.get("Size", 100))
+    charge_val = int(d.get("Charge", -5))
+    
+    # Determine charge type
+    if charge_val > 5:
+        charge_type = "Cationic (+ charge)"
+    elif charge_val < -5:
+        charge_type = "Anionic (- charge)"
+    else:
+        charge_type = "Neutral (no charge)"
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        clearance_material = get_material_clearance_profile(selected_material)
+        st.metric("Half-Life (Circulation)", clearance_material.get("half_life", "N/A"))
+        st.metric("Primary Route", clearance_material.get("primary_route", "N/A"))
+        st.metric("Liver Accumulation", clearance_material.get("liver_accumulation", "N/A"))
+    
+    with col2:
+        disease_clear = get_disease_clearance_optimization(selected_disease)
+        st.metric("Target Organ", disease_clear.get("target_organ", "N/A"))
+        st.metric("Recommended Size", disease_clear.get("recommended_size", "N/A"))
+        st.metric("Spleen Concern", clearance_material.get("spleen_accumulation", "N/A"))
+    
+    with st.expander("📖 Predicted Organ Accumulation & Optimization", expanded=False):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write(f"**Particle Size:** {particle_size} nm")
+            st.write(f"**Surface Charge:** {charge_val} mV ({charge_type})")
+            st.write(f"**Material:** {selected_material}")
+        
+        with col2:
+            clearance_opt = get_clearance_optimization_for_disease_drug_material(
+                selected_disease, selected_drug, selected_material
+            )
+            st.write(f"**Liver Accumulation:** {clearance_opt.get('liver_concern', 'N/A')}")
+            st.write(f"**Spleen Accumulation:** {clearance_opt.get('spleen_concern', 'N/A')}")
+            st.write(f"**Circulation Half-Life:** {clearance_opt.get('half_life', 'N/A')}")
+    
+    st.divider()
+    
+    # ============================================================
+    # RELEASE PROFILE
+    # ============================================================
     
     st.markdown("### 💊 Release Profile")
     
@@ -534,6 +712,7 @@ with tab3:
         max_value=100,
         value=int(d.get("ReleasePredictability", 85)),
         step=5,
+        help="Higher predictability = more controlled drug release"
     )
     
     # SYNC design changes to session state immediately
@@ -541,16 +720,16 @@ with tab3:
     
     st.divider()
     
-    # Debug: Show current targeting values
+    # Summary metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Ligand Density", f"{d.get('LigandDensity', 0)}%")
+        st.metric("Targeting Ligand", d.get("Ligand", "None"))
     with col2:
-        st.metric("Receptor Kd", f"{d.get('ReceptorBinding', 0):.1f} nM")
+        st.metric("Ligand Density", f"{d.get('LigandDensity', 0)}%")
     with col3:
-        st.metric("Release Predict", f"{d.get('ReleasePredictability', 0)}%")
+        st.metric("Release Profile", d.get("ReleaseProfile", "N/A")[:10] + "...")
     with col4:
-        st.metric("Selected Ligand", d.get("Ligand", "None"))
+        st.metric("Predictability", f"{d.get('ReleasePredictability', 0)}%")
     
     st.divider()
     st.markdown("### 🎯 Parameter Impact on Score")
