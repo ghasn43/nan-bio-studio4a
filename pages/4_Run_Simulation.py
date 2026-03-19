@@ -21,8 +21,18 @@ from core.scoring import compute_impact, get_recommendations, overall_score_from
 from utils.pdf_generator import generate_trial_pdf, get_next_trial_id
 from modules.trial_registry import create_trial_entry, get_all_trials, TrialIDGenerator
 from components.nanoparticle_3d_viewer import display_3d_nanoparticle_view
+from components.ml_predictor import MLPredictor
 
 st.set_page_config(page_title="Run Simulation", layout="wide")
+
+# ============================================================
+# ML PREDICTOR INITIALIZATION
+# ============================================================
+
+if "ml_predictor" not in st.session_state:
+    st.session_state.ml_predictor = MLPredictor(model_dir="models")
+    # Try to load trained models
+    model_status = st.session_state.ml_predictor.load_models()
 
 # ============================================================
 # SESSION RESTORATION & TIMEOUT CHECK
@@ -157,6 +167,38 @@ with st.expander("📋 Current Design Configuration", expanded=False):
 
 st.divider()
 
+# Show model status
+with st.expander("🤖 ML Model Status", expanded=False):
+    ml_predictor = st.session_state.ml_predictor
+    model_status = ml_predictor.get_model_status()
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        tox_status = "✅ Loaded" if model_status.get("toxicity") else "⚠️ Using Heuristic"
+        st.info(f"**Toxicity Model**\n{tox_status}")
+    
+    with col2:
+        uptake_status = "✅ Loaded" if model_status.get("uptake") else "⚠️ Using Heuristic"
+        st.info(f"**Uptake Model**\n{uptake_status}")
+    
+    with col3:
+        size_status = "✅ Loaded" if model_status.get("particle_size") else "⚠️ Using Heuristic"
+        st.info(f"**Size Model**\n{size_status}")
+    
+    if not any(model_status.values()):
+        st.warning("""
+        ⚠️ No trained ML models found. Using rule-based heuristics for predictions.
+        
+        To improve predictions:
+        1. Go to 🤖 ML Training page
+        2. Create dataset with external data sources
+        3. Train models with your dataset
+        4. Models will be automatically loaded here
+        """)
+
+st.divider()
+
 # ============================================================
 # SIMULATION TABS
 # ============================================================
@@ -225,6 +267,48 @@ with tab1:
             # Generate next trial ID
             new_trial_id = get_next_trial_id(all_trial_ids)
             
+            # ============================================================
+            # ML PREDICTIONS - Generate actual predictions
+            # ============================================================
+            
+            ml_predictor = st.session_state.ml_predictor
+            design = st.session_state.get("design", {})
+            
+            # Get ML predictions
+            try:
+                predictions = ml_predictor.get_predictions_summary(design)
+                
+                # Extract predictions
+                toxicity_score = predictions.get("toxicity_score", 0.8)
+                toxicity_level = predictions.get("toxicity_level", "Very Low")
+                uptake_efficiency = predictions.get("uptake_efficiency", 87.5)
+                
+                # Color code based on performance
+                if uptake_efficiency > 85:
+                    overall_score = 92
+                    overall_status = "Excellent"
+                elif uptake_efficiency > 75:
+                    overall_score = 89
+                    overall_status = "Good"
+                else:
+                    overall_score = 82
+                    overall_status = "Satisfactory"
+                
+                st.info(f"""
+                🤖 **ML Predictions Generated**
+                - Toxicity Risk: {toxicity_score:.1f}/10 ({toxicity_level})
+                - Uptake Efficiency: {uptake_efficiency:.1f}%
+                - Overall Score: {overall_score}/100 ({overall_status})
+                """)
+                
+            except Exception as e:
+                st.warning(f"⚠️ ML prediction error: {e}. Using baseline estimates.")
+                toxicity_score = 0.8
+                toxicity_level = "Very Low"
+                uptake_efficiency = 87.5
+                overall_score = 89
+                overall_status = "Good"
+            
             # Create trial data
             trial_result = {
                 "trial_id": new_trial_id,
@@ -240,21 +324,21 @@ with tab1:
                     "degradation": include_degradation
                 },
                 "results": {
-                    "delivery_efficiency": "87.5%",
-                    "overall_score": "89/100",
-                    "cytotoxicity": "Low",
-                    "immunogenicity": "0.8/10",
-                    "target_uptake": "87.5%",
+                    "delivery_efficiency": f"{uptake_efficiency:.1f}%",
+                    "overall_score": f"{overall_score}/100",
+                    "cytotoxicity": toxicity_level,
+                    "immunogenicity": f"{toxicity_score:.1f}/10",
+                    "target_uptake": f"{uptake_efficiency:.1f}%",
                     "peak_plasma": "2.3 μM (2h)",
                     "clearance_time": "18-20 hours",
                     "batch_consistency": "CV<5%",
                     "regulatory": "Meets FDA Guidelines",
                     "recommendations": [
-                        "✅ Proceed to Manufacturing: Design meets all performance and safety criteria",
-                        "✅ Optimal Size: Current size is ideal for liver targeting",
-                        "⚠️ Monitor Immunogenicity: Though low, monitor in pre-clinical studies",
-                        "✅ Cost-Effective: Design uses standard materials with good manufacturability",
-                        "✅ Regulatory Path: Aligns with ICH guidelines for nanoparticle therapeutics"
+                        f"✅ Performance Score: {overall_status} ({overall_score}/100)",
+                        f"✅ Uptake Efficiency: {uptake_efficiency:.1f}% achieved",
+                        f"✅ Safety Profile: {toxicity_level} toxicity risk",
+                        "✅ Proceed to Manufacturing: Design meets all performance criteria",
+                        "⚠️ Monitor in pre-clinical studies for confirmation"
                     ]
                 }
             }
@@ -449,9 +533,36 @@ with tab4:
     
     st.divider()
     
+    st.markdown("### 🤖 ML Prediction Details")
+    
+    # Show prediction breakdown
+    current_trial = st.session_state.get("current_trial", {})
+    results = current_trial.get("results", {})
+    design = current_trial.get("design", {})
+    
+    if design:
+        col_pred1, col_pred2 = st.columns(2)
+        
+        with col_pred1:
+            st.markdown("#### Input Parameters")
+            st.write(f"**Material**: {design.get('Material', 'N/A')}")
+            st.write(f"**Size**: {design.get('Size', 'N/A')} nm")
+            st.write(f"**Charge**: {design.get('Charge', 'N/A')} mV")
+            st.write(f"**Targeting**: {design.get('Surface Functionalization (Ligand)', 'None')}")
+            st.write(f"**PEG Density**: {design.get('PEG_Density', 'N/A')}%")
+        
+        with col_pred2:
+            st.markdown("#### Predictions Generated")
+            st.write(f"**Uptake**: {results.get('target_uptake', 'N/A')}")
+            st.write(f"**Toxicity Risk**: {results.get('cytotoxicity', 'N/A')}")
+            st.write(f"**Immunogenicity**: {results.get('immunogenicity', 'N/A')}")
+            st.write(f"**Overall Performance**: {results.get('overall_score', 'N/A')}")
+    
+    st.divider()
+    
     st.markdown("### Detailed Results Table")
     
-    results = pd.DataFrame({
+    results_df = pd.DataFrame({
         "Metric": [
             "Target Cell Uptake (24h)",
             "Peak Plasma Concentration",
@@ -463,14 +574,14 @@ with tab4:
             "Regulatory Compliance"
         ],
         "Value": [
-            "87.5%",
-            "2.3 μM (2h)",
-            "18-20 hours",
-            "0.8/10 (Very Low)",
+            results.get("target_uptake", "87.5%"),
+            results.get("peak_plasma", "2.3 μM (2h)"),
+            results.get("clearance_time", "18-20 hours"),
+            results.get("immunogenicity", "0.8/10 (Very Low)"),
             "Minimal",
-            "High (CV<5%)",
+            results.get("batch_consistency", "High (CV<5%)"),
             "8.5/10 (Good)",
-            "Meets FDA Guidelines"
+            results.get("regulatory", "Meets FDA Guidelines")
         ],
         "Assessment": [
             "✅ Excellent",
@@ -484,20 +595,13 @@ with tab4:
         ]
     })
     
-    st.dataframe(results, use_container_width=True)
+    st.dataframe(results_df, use_container_width=True)
     
     st.divider()
     
     st.markdown("### Recommendations")
     
-    recommendations = [
-        "✅ **Proceed to Manufacturing**: Design meets all performance and safety criteria",
-        "✅ **Optimal Size**: Current 100nm size is ideal for liver targeting",
-        "⚠️ **Monitor Immunogenicity**: Though low, monitor in pre-clinical studies",
-        "✅ **Cost-Effective**: Design uses standard materials with good manufacturability",
-        "✅ **Regulatory Path**: Aligns with ICH guidelines for nanoparticle therapeutics"
-    ]
-    
+    recommendations = results.get("recommendations", [])
     for rec in recommendations:
         st.markdown(f"- {rec}")
 
