@@ -1243,22 +1243,154 @@ with tab5:
     
     st.divider()
     
+    # ========================================
+    # INTERACTIVE SLIDERS FOR OPTIMIZATION
+    # ========================================
+    st.markdown("### 🎚️ Fine-Tune Parameters for Blood Safety")
+    st.caption("Adjust these key parameters and watch blood safety metrics update in real-time")
+    
+    # Main optimization controls
+    opt_col1, opt_col2, opt_col3 = st.columns(3)
+    
+    with opt_col1:
+        st.markdown("#### 🔴 Charge (Affects Hemolysis & pI)")
+        d["Charge"] = st.slider(
+            "Charge (mV)",
+            min_value=-50,
+            max_value=50,
+            value=int(d.get("Charge", -30)),
+            step=5,
+            key="sprint1_charge_opt",
+            help="Positive charges → hemolysis & protein binding. Neutral (±5) = best"
+        )
+        st.caption("💡 Keep near 0 mV for safety")
+    
+    with opt_col2:
+        st.markdown("#### 💛 PEG Density (Affects Osmolarity & Half-Life)")
+        d["PEG_Density"] = st.slider(
+            "PEG Density (%)",
+            min_value=0,
+            max_value=100,
+            value=int(d.get("PEG_Density", 50)),
+            step=5,
+            key="sprint1_peg_opt",
+            help="Higher PEG = stealth coat + longer circulation, but increases osmolarity"
+        )
+        st.caption("💡 30-60% optimal for most applications")
+    
+    with opt_col3:
+        st.markdown("#### 🔵 Drug Loading (Affects Osmolarity)")
+        d["Drug"] = st.slider(
+            "Drug Loading (%)",
+            min_value=0,
+            max_value=100,
+            value=int(d.get("Drug", 50)),
+            step=5,
+            key="sprint1_drug_opt",
+            help="Higher loading increases osmotic activity"
+        )
+        st.caption("💡 70-90% loading is typical target")
+    
+    # Secondary parameters (if users want fine control)
+    with st.expander("⚙️ Advanced Fine-Tuning (Optional)"):
+        adv_col1, adv_col2 = st.columns(2)
+        
+        with adv_col1:
+            st.markdown("**Hydrophobicity** (Affects Hemolysis)")
+            d["Hydrophobicity"] = st.slider(
+                "Hydrophobicity (LogP)",
+                min_value=0.0,
+                max_value=5.0,
+                value=float(d.get("Hydrophobicity", 1.5)),
+                step=0.1,
+                key="sprint1_hydro_opt",
+                help="Optimal: 0.5-2.5 LogP. Higher = membrane penetration risk"
+            )
+        
+        with adv_col2:
+            st.markdown("**Encapsulation %** (Affects Osmolarity)")
+            d["Encapsulation"] = st.slider(
+                "Encapsulation Efficiency (%)",
+                min_value=50,
+                max_value=100,
+                value=int(d.get("Encapsulation", 85)),
+                step=5,
+                key="sprint1_encap_opt",
+                help="Lower efficiency = more water = higher osmolarity"
+            )
+    
+    # Sync design changes
+    st.session_state.design = d
+    
+    st.divider()
+    
+    # RECALCULATE WITH NEW VALUES
+    st.markdown("### 🔄 Updated Assessment (Real-Time)")
+    
+    # Recalculate all Sprint 1 metrics with current slider values
+    osmolarity_result_updated = calculate_osmolarity(d)
+    hemolysis_result_updated = calculate_hemolysis_risk(d)
+    halflife_result_updated = predict_improved_blood_half_life(d)
+    pI_result_updated = calculate_isoelectric_point(d)
+    
+    # Updated status cards
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        osmo_status = "✅" if 250 <= osmolarity_result_updated['osmolarity_mosm_kg'] <= 350 else "⚠️"
+        st.metric(
+            f"{osmo_status} Osmolarity",
+            f"{osmolarity_result_updated['osmolarity_mosm_kg']:.0f} mOsm/kg",
+            delta=f"{osmolarity_result_updated['osmolarity_mosm_kg'] - osmolarity_result['osmolarity_mosm_kg']:+.0f}",
+            help="Safe: 250-350"
+        )
+    
+    with col2:
+        hemolysis_status = "✅" if hemolysis_result_updated['hemolysis_score'] < 35 else "⚠️" if hemolysis_result_updated['hemolysis_score'] < 50 else "❌"
+        st.metric(
+            f"{hemolysis_status} Hemolysis",
+            f"{hemolysis_result_updated['hemolysis_score']:.0f}/100",
+            delta=f"{hemolysis_result_updated['hemolysis_score'] - hemolysis_result['hemolysis_score']:+.0f}",
+            help="Lower is better"
+        )
+    
+    with col3:
+        st.metric(
+            "⏱️ Half-Life",
+            f"{halflife_result_updated['blood_half_life_hours']:.2f} hrs",
+            delta=f"{halflife_result_updated['blood_half_life_hours'] - halflife_result['blood_half_life_hours']:+.2f}",
+            help=halflife_result_updated['clearance_mechanism']
+        )
+    
+    with col4:
+        pI_risk = "✅" if "Low" in pI_result_updated['aggregation_concern'] else "🟡" if "Moderate" in pI_result_updated['aggregation_concern'] else "⚠️"
+        st.metric(
+            "📌 pI",
+            f"{pI_risk} pH {pI_result_updated['isoelectric_point_pH']:.1f}",
+            help=pI_result_updated['aggregation_concern']
+        )
+    
+    st.divider()
+    
+    # Recommendations for improvement
+    st.markdown("### 💡 Recommendations for Blood Safety")
+    
     # Recommendations for improvement
     st.markdown("### 💡 Recommendations for Blood Safety")
     
     recommendations = []
     
-    if not (250 <= osmolarity_result['osmolarity_mosm_kg'] <= 350):
+    if not (250 <= osmolarity_result_updated['osmolarity_mosm_kg'] <= 350):
         recommendations.append("🔧 **Osmolarity**: Adjust based on recommendations above")
     
-    if hemolysis_result['hemolysis_score'] > 35:
-        recommendations.append("🔧 **Hemolysis**: " + (hemolysis_result['primary_drivers'][0] if hemolysis_result['primary_drivers'] else "Reduce charge"))
+    if hemolysis_result_updated['hemolysis_score'] > 35:
+        recommendations.append("🔧 **Hemolysis**: " + (hemolysis_result_updated['primary_drivers'][0] if hemolysis_result_updated['primary_drivers'] else "Reduce charge"))
     
-    if halflife_result['blood_half_life_hours'] < 2:
+    if halflife_result_updated['blood_half_life_hours'] < 2:
         recommendations.append(f"🔧 **Circulation**: Increase PEGylation or reduce size for extended half-life")
     
-    if "High" in pI_result['aggregation_concern']:
-        recommendations.append(f"🔧 **Aggregation**: Risk at pH {pI_result['isoelectric_point_pH']:.1f} - Consider pH-buffering system")
+    if "High" in pI_result_updated['aggregation_concern']:
+        recommendations.append(f"🔧 **Aggregation**: Risk at pH {pI_result_updated['isoelectric_point_pH']:.1f} - Consider pH-responsive release")
     
     if recommendations:
         for rec in recommendations:
