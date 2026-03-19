@@ -77,6 +77,108 @@ with tab1:
     
     st.divider()
     
+    col_np1, col_np2 = st.columns(2)
+    
+    with col_np1:
+        st.subheader("🔬 Nanoparticle Design Studio")
+        st.markdown("""
+        ✅ **What You Design: Nanoparticles (NOT Nanobodies)**
+        
+        **Understanding the Difference:**
+        - ❌ **NOT** Nanobodies: Small antibody fragments from llamas
+        - ✅ **YES** Nanoparticles: Tiny drug delivery capsules (50-200 nm)
+        
+        ✅ **6+ Material Types Available**
+        1. **Lipid Nanoparticles (LNP)** - Lipid shells (COVID vaccine carriers)
+        2. **PLGA** - Biodegradable polymers
+        3. **Liposomes** - Spherical lipid bilayers
+        4. **DNA Origami** - Designed DNA structures
+        5. **Gold NPs** - Metallic particles
+        6. **Silica NPs** - Glass-based particles
+        7. **Albumin NPs** - Protein-based carriers
+        
+        ✅ **Design Parameters**
+        - **Size**: 50-200 nm diameter
+        - **Surface Charge**: Zeta potential (mV)
+        - **Coating**: PEGylation % for stealth
+        - **Encapsulation**: Drug loading %
+        - **Stability**: pH, temperature resistance
+        - **Ligands**: Targeting molecules (RGD, Transferrin, etc.)
+        """)
+    
+    with col_np2:
+        st.subheader("🎯 Nanoparticle Properties & Performance")
+        st.markdown("""
+        ✅ **Design Performance Metrics**
+        - **Toxicity Risk**: 0-10 scale (Very Low to Very High)
+        - **Uptake Efficiency**: % cellular uptake (ML-predicted)
+        - **Circulation Time**: How long in bloodstream
+        - **Targeting Specificity**: Accuracy to disease cells
+        - **Biodegradation**: Time to break down in body
+        
+        ✅ **Nanoparticle Functions**
+        1. Protect drugs from degradation
+        2. Deliver drugs to target cells/tissues
+        3. Minimize off-target side effects
+        4. Improve drug bioavailability
+        5. Enable personalized medicine
+        
+        ✅ **Real-World Applications**
+        - Cancer drug delivery
+        - mRNA vaccines (COVID, future)
+        - Gene therapy vectors
+        - Immune checkpoint modulators
+        - Diagnostics and imaging
+        """)
+    
+    st.divider()
+    
+    col_design1, col_design2 = st.columns(2)
+    
+    with col_design1:
+        st.subheader("⚙️ Complete Design Workflow")
+        st.markdown("""
+        ✅ **Step 1: Disease Selection**
+        - Choose cancer type (HCC, Breast, Lung, etc.)
+        - Select tumor subtype if applicable
+        - View disease-specific parameters
+        
+        ✅ **Step 2: Drug Selection**
+        - Browse approved therapeutics
+        - Select drug for combination with NP
+        - View drug-specific requirements
+        
+        ✅ **Step 3: Nanoparticle Design**
+        - Select material composition
+        - Adjust size (nm)
+        - Tune surface charge (mV)
+        - Set PEG density (%)
+        - Choose targeting ligand
+        - Configure encapsulation %
+        """)
+    
+    with col_design2:
+        st.subheader("📊 Simulation & Prediction")
+        st.markdown("""
+        ✅ **Step 4: AI Predictions**
+        - **ML Toxicity Model**: Predicts 0-10 risk
+        - **ML Uptake Model**: Predicts % efficiency
+        - **ML Size Model**: Predicts final particle size
+        
+        ✅ **Step 5: 3D Visualization**
+        - View material colors (unique per type)
+        - See PEG coating layer
+        - Observe targeting ligands protruding
+        - Rotate and inspect from all angles
+        
+        ✅ **Step 6: Performance Analysis**
+        - Delivery kinetics curves
+        - Biodistribution predictions
+        - Safety profile assessment
+        - Regulatory compliance check
+        - Generate trial records
+        """)
+    
     col3, col4 = st.columns(2)
     
     with col3:
@@ -111,6 +213,7 @@ with tab1:
         - Navigation shortcuts
         - System status
         """)
+
 
 # ============================================================================
 
