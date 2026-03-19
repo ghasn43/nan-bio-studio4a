@@ -15,6 +15,13 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.scoring import compute_impact, get_recommendations, overall_score_from_impact
+from data.drug_material_mapping import (
+    get_recommended_materials,
+    get_recommendation_level,
+    get_material_info,
+    order_materials_by_recommendation,
+    AVAILABLE_MATERIALS
+)
 
 # Force reload to ensure latest version is used
 import core.scoring
@@ -246,19 +253,72 @@ with tab1:
         "Gold NP": {"biodegradation": 180, "cost_base": 80, "density": 19.3},
         "Silica NP": {"biodegradation": 365, "cost_base": 30, "density": 2.2},
         "DNA Origami": {"biodegradation": 1, "cost_base": 120, "density": 1.65},
+        "Liposome": {"biodegradation": 14, "cost_base": 60, "density": 1.0},
+        "Polymeric NP": {"biodegradation": 45, "cost_base": 35, "density": 1.15},
+        "Albumin NP": {"biodegradation": 10, "cost_base": 70, "density": 1.35},
     }
     
     col1, col2 = st.columns(2)
     
     with col1:
-        d["Material"] = st.selectbox(
-            "Select Material",
-            list(material_properties.keys()),
-            index=list(material_properties.keys()).index(d.get("Material", "Lipid NP"))
-        )
+        st.write("**💬 Recommended Materials for Your Drug**")
+        
+        # Get drug recommendation context
+        selected_drug = st.session_state.get("selected_drug", "")
+        mapping = get_recommended_materials(selected_drug)
+        
+        if mapping:
+            optimal_mats, suitable_mats, not_rec_mats = order_materials_by_recommendation(selected_drug)
+            
+            # Show recommendations
+            st.caption(f"**Drug:** {selected_drug}")
+            st.caption("**Optimal carriers:** " + ", ".join(optimal_mats))
+            if suitable_mats:
+                st.caption("**Suitable alternatives:** " + ", ".join(suitable_mats))
+            
+            # Create sorted material list: optimal first, then suitable, then others
+            sorted_materials = optimal_mats + suitable_mats + not_rec_mats
+            
+            # Find current selection in sorted list
+            current_material = d.get("Material", "Lipid NP")
+            try:
+                current_index = sorted_materials.index(current_material)
+            except ValueError:
+                current_index = 0
+            
+            d["Material"] = st.selectbox(
+                "Select Material",
+                sorted_materials,
+                index=current_index,
+                help="Reordered by recommendation for selected drug"
+            )
+            
+            # Show recommendation level for selected material
+            rec_level = get_recommendation_level(selected_drug, d["Material"])
+            if rec_level == "optimal":
+                st.success(f"✅ **Optimal** choice for {selected_drug}")
+            elif rec_level == "suitable":
+                st.info(f"ℹ️ **Suitable** alternative for {selected_drug}")
+            else:
+                st.warning(f"⚠️ **Not typically recommended** for {selected_drug}. Consider changing material.")
+        else:
+            # Fallback if no drug selected
+            d["Material"] = st.selectbox(
+                "Select Material",
+                list(material_properties.keys()),
+                index=list(material_properties.keys()).index(d.get("Material", "Lipid NP"))
+            )
+        
         material_info = material_properties.get(d["Material"], {})
         st.caption(f"🔄 **Biodegradation**: {material_info.get('biodegradation', 'N/A')} days")
         st.caption(f"💰 **Cost Base**: ${material_info.get('cost_base', 'N/A')}")
+        
+        # Show material characteristics
+        with st.expander("📋 Material Details", expanded=False):
+            mat_desc = get_material_info(d["Material"])
+            if mat_desc:
+                st.markdown(f"**Description:** {mat_desc.get('description', 'N/A')}")
+                st.markdown(f"**Best Payload:** {mat_desc.get('best_payload', 'N/A')}")
     
     with col2:
         d["Target"] = st.selectbox(
@@ -267,6 +327,12 @@ with tab1:
             index=["Liver Cells", "Tumor", "Brain", "Lung", "Kidney", "Spleen", "Bone"].index(d.get("Target", "Liver Cells"))
         )
         st.caption(f"⚡ **Density**: {material_info.get('density', 'N/A')} g/cm³")
+        
+        # Show disease-drug context
+        with st.expander("🏥 Current Context", expanded=False):
+            st.markdown(f"**Disease:** {st.session_state.get('selected_disease', 'Not selected')}")
+            st.markdown(f"**Drug:** {st.session_state.get('selected_drug', 'Not selected')}")
+            st.markdown(f"**HCC Subtype:** {st.session_state.get('hcc_subtype', 'N/A')}")
     
     st.markdown("### 📏 Physical Parameters")
     
