@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.scoring import compute_impact, get_recommendations, overall_score_from_impact
 from utils.pdf_generator import generate_trial_pdf, get_next_trial_id
 from modules.trial_registry import create_trial_entry, get_all_trials, TrialIDGenerator
+from components.nanoparticle_3d_viewer import display_3d_nanoparticle_view
 
 st.set_page_config(page_title="Run Simulation", layout="wide")
 
@@ -160,11 +161,12 @@ st.divider()
 # SIMULATION TABS
 # ============================================================
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "▶️ Run Simulation",
     "📊 Delivery Kinetics",
     "🎯 Biodistribution",
     "📈 Performance Summary",
+    "🔬 3D Structure",
     "📋 Trial History"
 ])
 
@@ -490,8 +492,21 @@ with tab4:
     for rec in recommendations:
         st.markdown(f"- {rec}")
 
-# TAB 5: TRIAL HISTORY
+# TAB 5: 3D NANOPARTICLE STRUCTURE
 with tab5:
+    # Only show 3D viewer if simulation has completed
+    if st.session_state.get("simulation_completed"):
+        design = st.session_state.get("design", {})
+        display_3d_nanoparticle_view(design)
+    else:
+        st.info("📊 Run the simulation first to view the 3D nanoparticle structure.")
+        st.markdown("**Steps:**")
+        st.markdown("1. Configure parameters in Tab 1: Run Simulation")
+        st.markdown("2. Click '▶️ START SIMULATION' button")
+        st.markdown("3. Once complete, the 3D visualization will appear here")
+
+# TAB 6: TRIAL HISTORY
+with tab6:
     st.subheader("Simulation Trial History & Comparisons")
     
     st.markdown("### Your Previous Simulations")
