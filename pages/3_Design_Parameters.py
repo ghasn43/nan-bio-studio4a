@@ -619,6 +619,45 @@ with tab3:
         st.metric("Expected Circulation", peg_rec.get("expected_circulation_time", "N/A"))
         st.metric("MPS Reduction", peg_rec.get("mps_reduction", "N/A"))
     
+    # ============================================================
+    # INTERACTIVE CONTROLS FOR IMMUNOGENICITY
+    # ============================================================
+    
+    st.markdown("**⚙️ Adjust PEGylation Parameters:**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if material_immuno.get("peg_responsive"):
+            d["PEGDensity"] = st.slider(
+                "PEG Density (%)",
+                min_value=0,
+                max_value=20,
+                value=int(d.get("PEGDensity", 5)),
+                step=1,
+                help="Higher PEG density = better stealth, slower targeting"
+            )
+        else:
+            st.info("ℹ️ PEGylation not needed for this material")
+            d["PEGDensity"] = 0
+    
+    with col2:
+        d["PEGChainLength"] = st.selectbox(
+            "PEG Chain Length (Da)",
+            [1000, 1500, 2000, 3000, 5000, 10000],
+            index=[1000, 1500, 2000, 3000, 5000, 10000].index(d.get("PEGChainLength", 2000))
+        )
+    
+    with col3:
+        d["CoatingThickness"] = st.slider(
+            "Coating Thickness (nm)",
+            min_value=0.5,
+            max_value=20.0,
+            value=float(d.get("CoatingThickness", 2.5)),
+            step=0.5,
+            help="Thicker coating = better stealth but slower cell uptake"
+        )
+    
     # PEGylation details
     with st.expander("📖 PEGylation Strategy & Rationale", expanded=False):
         col1, col2 = st.columns(2)
@@ -651,6 +690,41 @@ with tab3:
         st.metric("Drug pH Sensitivity", stability_drug.get("pH_sensitivity", "N/A"))
         st.metric("Drug Temperature Sens.", stability_drug.get("temperature_sensitivity", "N/A"))
         st.metric("Light Sensitive", stability_drug.get("light_sensitivity", "No"))
+    
+    # ============================================================
+    # INTERACTIVE CONTROLS FOR STABILITY
+    # ============================================================
+    
+    st.markdown("**⚙️ Adjust Storage & Testing Parameters:**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        d["StoragePH"] = st.slider(
+            "Storage pH",
+            min_value=3.0,
+            max_value=11.0,
+            value=float(d.get("StoragePH", 7.4)),
+            step=0.5,
+            help="Select optimal pH for storage conditions"
+        )
+    
+    with col2:
+        d["StorageTemperature"] = st.selectbox(
+            "Storage Temperature",
+            ["-80°C (Ultra-cold)", "-20°C (Freezer)", "2-8°C (Refrigerated)", "25°C (Room Temp)"],
+            index=["-80°C (Ultra-cold)", "-20°C (Freezer)", "2-8°C (Refrigerated)", "25°C (Room Temp)"].index(d.get("StorageTemperature", "2-8°C (Refrigerated)"))
+        )
+    
+    with col3:
+        d["FreezethawCycles"] = st.slider(
+            "Freeze-Thaw Cycles",
+            min_value=0,
+            max_value=10,
+            value=int(d.get("FreezethawCycles", 3)),
+            step=1,
+            help="Number of freeze-thaw cycles to test"
+        )
     
     combined_stability = get_combined_stability_recommendation(selected_material, selected_drug)
     
@@ -697,12 +771,66 @@ with tab3:
         st.metric("Recommended Size", disease_clear.get("recommended_size", "N/A"))
         st.metric("Spleen Concern", clearance_material.get("spleen_accumulation", "N/A"))
     
+    # ============================================================
+    # INTERACTIVE CONTROLS FOR CLEARANCE
+    # ============================================================
+    
+    st.markdown("**⚙️ Adjust Clearance Parameters:**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        d["ClearanceSize"] = st.slider(
+            "Particle Size (nm)",
+            min_value=10,
+            max_value=300,
+            value=int(d.get("ClearanceSize", particle_size)),
+            step=10,
+            help="Affects MPS recognition and tissue penetration"
+        )
+    
+    with col2:
+        d["ClearanceCharge"] = st.slider(
+            "Surface Charge (mV)",
+            min_value=-50,
+            max_value=50,
+            value=int(d.get("ClearanceCharge", charge_val)),
+            step=5,
+            help="Affects protein corona and clearance pathway"
+        )
+    
+    with col3:
+        clearance_target_options = ["Liver", "Pancreas", "Breast", "Lung", "Colon"]
+        current_target = d.get("ClearanceTarget", disease_clear.get("target_organ", "Liver"))
+        try:
+            clearance_target_idx = clearance_target_options.index(current_target)
+        except ValueError:
+            clearance_target_idx = 0
+        
+        d["ClearanceTarget"] = st.selectbox(
+            "Target Organ for Clearance",
+            clearance_target_options,
+            index=clearance_target_idx,
+            help="Optimize clearance pathway for target organ"
+        )
+    
     with st.expander("📖 Predicted Organ Accumulation & Optimization", expanded=False):
         col1, col2 = st.columns(2)
         
         with col1:
-            st.write(f"**Particle Size:** {particle_size} nm")
-            st.write(f"**Surface Charge:** {charge_val} mV ({charge_type})")
+            st.write(f"**Particle Size:** {d.get('ClearanceSize', particle_size)} nm")
+            st.write(f"**Surface Charge:** {d.get('ClearanceCharge', charge_val)} mV")
+            
+            # Determine new charge type
+            new_charge = int(d.get('ClearanceCharge', charge_val))
+            if new_charge > 5:
+                new_charge_type = "Cationic (+ charge)"
+            elif new_charge < -5:
+                new_charge_type = "Anionic (- charge)"
+            else:
+                new_charge_type = "Neutral (no charge)"
+            
+            st.write(f"**Charge Type:** {new_charge_type}")
             st.write(f"**Material:** {selected_material}")
         
         with col2:
@@ -712,6 +840,9 @@ with tab3:
             st.write(f"**Liver Accumulation:** {clearance_opt.get('liver_concern', 'N/A')}")
             st.write(f"**Spleen Accumulation:** {clearance_opt.get('spleen_concern', 'N/A')}")
             st.write(f"**Circulation Half-Life:** {clearance_opt.get('half_life', 'N/A')}")
+            st.write(f"**Recommendations:**")
+            for rec in clearance_opt.get('recommendations', []):
+                st.write(f"• {rec}")
     
     st.divider()
     
