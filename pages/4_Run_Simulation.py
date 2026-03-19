@@ -533,11 +533,22 @@ with tab6:
             if db_trials:
                 # Convert database trials to session format
                 for db_trial in db_trials:
+                    # Safely extract and format date
+                    try:
+                        raw_date = db_trial.get("creation_timestamp", "N/A")
+                        if raw_date and raw_date != "N/A":
+                            # Try to extract just the date part (YYYY-MM-DD)
+                            date_str = str(raw_date).split()[0] if " " in str(raw_date) else str(raw_date)
+                        else:
+                            date_str = "2026-03-19"  # Default to today if missing
+                    except:
+                        date_str = "2026-03-19"  # Fallback date
+                    
                     # Transform database record to session format
                     session_trial = {
                         "trial_id": db_trial.get("trial_id", "N/A"),
                         "trial_name": f"Trial {db_trial.get('trial_id', 'N/A')}",
-                        "date": db_trial.get("creation_timestamp", "N/A").split()[0] if db_trial.get("creation_timestamp") else "N/A",
+                        "date": date_str,
                         "design": {
                             "Material": "PLGA Nanoparticles",  # Default, could be extracted from notes
                             "Size": db_trial.get("np_size_nm", 100),
@@ -652,8 +663,11 @@ with tab6:
         filtered_data = filtered_data[filtered_data["Design"].str.contains(design_filter, case=False, na=False)]
     
     if len(date_range) == 2:
-        # Both hardcoded and new trials now use same date format "%Y-%m-%d"
-        filtered_data["Date"] = pd.to_datetime(filtered_data["Date"], format="%Y-%m-%d")
+        # Convert dates - use errors='coerce' to handle mixed formats gracefully
+        filtered_data["Date"] = pd.to_datetime(filtered_data["Date"], format="%Y-%m-%d", errors='coerce')
+        # Remove rows with invalid dates
+        filtered_data = filtered_data.dropna(subset=["Date"])
+        # Apply date range filter
         filtered_data = filtered_data[(filtered_data["Date"] >= pd.to_datetime(date_range[0])) & 
                                       (filtered_data["Date"] <= pd.to_datetime(date_range[1]))]
     
