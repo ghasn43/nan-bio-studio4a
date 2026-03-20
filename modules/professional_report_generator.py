@@ -9,6 +9,22 @@ from typing import Dict, Optional, Tuple, List
 from io import BytesIO
 import random
 import math
+import sys
+from pathlib import Path
+
+# Add parent directory to imports for components
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Sprint 3 Component Predictors
+from components.publication_readiness_predictor import predict_publication_readiness
+from components.manufacturing_scalability_predictor import predict_manufacturing_scalability
+from components.stability_storage_predictor import predict_stability_storage
+from components.batch_quality_control_predictor import predict_batch_quality_control
+from components.environmental_impact_predictor import predict_environmental_impact
+from components.reproducibility_assessment_predictor import predict_reproducibility_assessment
+from components.cost_analysis_predictor import predict_cost_analysis
+from components.literature_comparison_predictor import predict_literature_comparison
+from components.intellectual_property_predictor import predict_intellectual_property
 
 
 # ============================================================================
@@ -459,7 +475,27 @@ def generate_optimization_recommendations(trial: Dict, metrics: Dict) -> List[st
 
 
 # ============================================================================
-# 6. MAIN PDF REPORT GENERATOR
+# 7. DESIGN PARAMETERS HELPER
+# ============================================================================
+
+def construct_design_params(trial: Dict) -> Dict:
+    """
+    Construct design_params dict from trial data for Sprint 3 component predictors.
+    Extracts or infers: Material, Size, Charge, PEG_Density, Ligand, Encapsulation
+    """
+    design_params = {
+        'Material': trial.get('material', 'PLGA'),
+        'Size': trial.get('np_size_nm', 100),
+        'Charge': trial.get('surface_charge', 'Negative'),
+        'PEG_Density': trial.get('peg_density_percent', 5),
+        'Ligand': trial.get('active_ligand', 'None'),
+        'Encapsulation': trial.get('encapsulation_efficiency_percent', 75)
+    }
+    return design_params
+
+
+# ============================================================================
+# 8. MAIN PDF REPORT GENERATOR
 # ============================================================================
 
 def generate_professional_pdf_report(trial: Dict) -> Optional[BytesIO]:
@@ -488,6 +524,55 @@ def generate_professional_pdf_report(trial: Dict) -> Optional[BytesIO]:
     
     # Calculate delivery metrics
     metrics = calculate_delivery_metrics(inferred_trial, bio_env)
+    
+    # Get design parameters for Sprint 3 components
+    design_params = construct_design_params(inferred_trial)
+    
+    # Call all 9 Sprint 3 component predictors
+    try:
+        publication_result = predict_publication_readiness(design_params)
+    except Exception as e:
+        publication_result = {"readiness_score": 0, "readiness_level": "🔴"}
+    
+    try:
+        manufacturing_result = predict_manufacturing_scalability(design_params)
+    except Exception as e:
+        manufacturing_result = {"scalability_score": 0, "scalability_level": "🔴"}
+    
+    try:
+        stability_result = predict_stability_storage(design_params)
+    except Exception as e:
+        stability_result = {"stability_score": 0}
+    
+    try:
+        qc_result = predict_batch_quality_control(design_params)
+    except Exception as e:
+        qc_result = {"total_qc_score": 0}
+    
+    try:
+        environmental_result = predict_environmental_impact(design_params)
+    except Exception as e:
+        environmental_result = {"sustainability_score": 0}
+    
+    try:
+        reproducibility_result = predict_reproducibility_assessment(design_params)
+    except Exception as e:
+        reproducibility_result = {"reproducibility_score": 0}
+    
+    try:
+        cost_result = predict_cost_analysis(design_params)
+    except Exception as e:
+        cost_result = {"cost_per_dose_10mg_usd": 0}
+    
+    try:
+        literature_result = predict_literature_comparison(design_params)
+    except Exception as e:
+        literature_result = {"novelty_score": 0}
+    
+    try:
+        ip_result = predict_intellectual_property(design_params)
+    except Exception as e:
+        ip_result = {"novelty_score": 0}
     
     # Generate text content
     exec_summary = generate_executive_summary(inferred_trial, metrics, disease_code)
@@ -773,6 +858,376 @@ def generate_professional_pdf_report(trial: Dict) -> Optional[BytesIO]:
     for i, rec in enumerate(recommendations, 1):
         story.append(Paragraph(f"{i}. {rec}", styles['Normal']))
     story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: PUBLICATION READINESS ===========
+    story.append(PageBreak())
+    story.append(Paragraph("Publication Readiness Assessment", heading_style))
+    
+    pub_score = publication_result.get('readiness_score', 0)
+    pub_level = publication_result.get('readiness_level', '🔴')
+    pub_data = [
+        ['Assessment', 'Status', 'Score'],
+        ['Publication Readiness', pub_level, f"{pub_score}/100"],
+        ['Data Completeness', f"{publication_result.get('data_completeness', 0):.0f}%", 'Complete' if publication_result.get('data_completeness', 0) > 75 else 'Partial'],
+        ['Statistical Power', f"{publication_result.get('statistical_power', 0):.0f}%", 'Adequate' if publication_result.get('statistical_power', 0) > 80 else 'Limited'],
+        ['Novelty Score', f"{publication_result.get('novelty_score', 0):.0f}/100", 'Novel' if publication_result.get('novelty_score', 0) > 70 else 'Derivative'],
+    ]
+    pub_table = Table(pub_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    pub_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0066cc')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#e8eef7')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(pub_table)
+    story.append(Spacer(1, 0.15*inch))
+    
+    target_journals = publication_result.get('target_journals', [])
+    if target_journals:
+        story.append(Paragraph(f"<b>Target Journals:</b> {', '.join(target_journals[:3])}", styles['Normal']))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: MANUFACTURING SCALABILITY ===========
+    story.append(Paragraph("Manufacturing Scalability Assessment", heading_style))
+    
+    mfg_score = manufacturing_result.get('scalability_score', 0)
+    mfg_level = manufacturing_result.get('scalability_level', '🔴')
+    mfg_data = [
+        ['Parameter', 'Status', 'Value'],
+        ['Scalability Level', mfg_level, f"{mfg_score}/100"],
+        ['Production Feasibility', manufacturing_result.get('production_feasibility', 'Unknown'), 'Feasible' if mfg_score > 70 else 'Challenging'],
+        ['GMP Readiness', manufacturing_result.get('gmp_readiness', 'Unknown'), 'High' if mfg_score > 70 else 'Low'],
+        ['Cost per Dose (10mg)', f"${manufacturing_result.get('cost_per_dose_usd', 0):.2f}", 'Economical' if manufacturing_result.get('cost_per_dose_usd', 999) < 50 else 'High'],
+    ]
+    mfg_table = Table(mfg_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    mfg_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#009900')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#e8f8e8')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(mfg_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: STABILITY & STORAGE ===========
+    story.append(PageBreak())
+    story.append(Paragraph("Stability & Storage Assessment", heading_style))
+    
+    stability_score = stability_result.get('stability_score', 0)
+    stability_data = [
+        ['Storage Condition', 'Shelf Life', 'Status'],
+        ['Room Temperature (25°C)', f"{stability_result.get('shelf_life_25c_months', 0):.1f} months", 'Acceptable' if stability_result.get('shelf_life_25c_months', 0) > 6 else 'Limited'],
+        ['Refrigerated (4°C)', f"{stability_result.get('shelf_life_4c_months', 0):.1f} months", 'Good' if stability_result.get('shelf_life_4c_months', 0) > 12 else 'Moderate'],
+        ['Frozen (-20°C)', f"{stability_result.get('shelf_life_m20c_months', 0):.1f} months", 'Excellent' if stability_result.get('shelf_life_m20c_months', 0) > 24 else 'Good'],
+        ['Ultra-Frozen (-80°C)', f"{stability_result.get('shelf_life_m80c_months', 0):.1f} months", 'Optimal' if stability_result.get('shelf_life_m80c_months', 0) > 36 else 'Excellent'],
+    ]
+    stability_table = Table(stability_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    stability_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9900cc')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8e8ff')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(stability_table)
+    story.append(Spacer(1, 0.15*inch))
+    
+    recommended_storage = stability_result.get('recommended_storage', 'Unknown')
+    story.append(Paragraph(f"<b>Recommended Storage:</b> {recommended_storage}", styles['Normal']))
+    story.append(Paragraph(f"<b>Overall Stability Score:</b> {stability_score}/100", styles['Normal']))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: BATCH QUALITY CONTROL ===========
+    story.append(Paragraph("Batch Quality Control Assessment", heading_style))
+    
+    qc_score = qc_result.get('total_qc_score', 0)
+    release_rate = qc_result.get('total_release_rate', 0)
+    consistency = qc_result.get('batch_consistency_score', 0)
+    gmp_level = qc_result.get('gmp_compliance_level', 'Unknown')
+    
+    qc_data = [
+        ['Quality Metric', 'Result', 'Status'],
+        ['Total QC Score', f"{qc_score}/100", 'Pass' if qc_score > 80 else 'Conditional' if qc_score > 60 else 'Fail'],
+        ['Product Release Rate', f"{release_rate:.1f}%", 'High' if release_rate > 70 else 'Moderate' if release_rate > 40 else 'Low'],
+        ['Batch Consistency', f"{consistency:.1f}%", 'Excellent' if consistency > 85 else 'Good' if consistency > 70 else 'Fair'],
+        ['GMP Compliance Level', gmp_level, gmp_level],
+    ]
+    qc_table = Table(qc_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    qc_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ff6600')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#fff8f0')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(qc_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: ENVIRONMENTAL IMPACT ===========
+    story.append(PageBreak())
+    story.append(Paragraph("Environmental Impact Assessment", heading_style))
+    
+    env_score = environmental_result.get('sustainability_score', 0)
+    biodegradability = environmental_result.get('biodegradability', 0)
+    carbon_footprint = environmental_result.get('carbon_footprint_kg', 0)
+    env_class = environmental_result.get('environmental_classification', 'Unknown')
+    
+    env_data = [
+        ['Environmental Metric', 'Value', 'Status'],
+        ['Sustainability Score', f"{env_score}/100", 'Excellent' if env_score > 80 else 'Good' if env_score > 60 else 'Fair'],
+        ['Biodegradability', f"{biodegradability:.0f}%", 'High' if biodegradability > 70 else 'Moderate' if biodegradability > 40 else 'Low'],
+        ['Estimated Carbon Footprint', f"{carbon_footprint:.1f} kg CO₂", 'Low' if carbon_footprint < 5 else 'Moderate' if carbon_footprint < 15 else 'High'],
+        ['Classification', env_class, env_class],
+    ]
+    env_table = Table(env_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    env_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#009966')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#e8f8f0')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(env_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: REPRODUCIBILITY ===========
+    story.append(Paragraph("Reproducibility Assessment", heading_style))
+    
+    repro_score = reproducibility_result.get('reproducibility_score', 0)
+    batch_var = reproducibility_result.get('batch_to_batch_variation', 0)
+    difficulty = reproducibility_result.get('difficulty_level', 'Unknown')
+    
+    repro_data = [
+        ['Parameter', 'Value', 'Status'],
+        ['Reproducibility Score', f"{repro_score}/100", 'Excellent' if repro_score > 85 else 'Good' if repro_score > 70 else 'Fair'],
+        ['Difficulty Level', difficulty, 'Low' if repro_score > 80 else 'Moderate' if repro_score > 60 else 'High'],
+        ['Batch Variation (±%)', f"{batch_var:.1f}%", 'Tight' if batch_var < 5 else 'Moderate' if batch_var < 10 else 'High'],
+    ]
+    repro_table = Table(repro_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    repro_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0099cc')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#e8f8ff')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(repro_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: COST ANALYSIS ===========
+    story.append(PageBreak())
+    story.append(Paragraph("Cost Analysis", heading_style))
+    
+    cost_per_dose = cost_result.get('cost_per_dose_10mg_usd', 0)
+    dev_cost = cost_result.get('development_cost_total', 0)
+    gross_margin = cost_result.get('gross_margin_percent', 0)
+    payback = cost_result.get('payback_period_months', 0)
+    
+    cost_data = [
+        ['Cost Metric', 'Value', 'Status'],
+        ['Cost per Dose (10mg)', f"${cost_per_dose:.2f}", 'Low' if cost_per_dose < 25 else 'Moderate' if cost_per_dose < 50 else 'High'],
+        ['Development Cost (Total)', f"${dev_cost:,.0f}", 'Feasible' if dev_cost < 5000000 else 'Substantial'],
+        ['Gross Margin', f"{gross_margin:.1f}%", 'Healthy' if gross_margin > 60 else 'Moderate' if gross_margin > 40 else 'Tight'],
+        ['Payback Period', f"{payback:.1f} months", 'Fast' if payback < 12 else 'Moderate' if payback < 24 else 'Extended'],
+    ]
+    cost_table = Table(cost_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    cost_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#cc0000')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ffe8e8')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(cost_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: LITERATURE COMPARISON ===========
+    story.append(Paragraph("Literature Comparison & Novelty", heading_style))
+    
+    lit_novelty = literature_result.get('novelty_score', 0)
+    citations = literature_result.get('predicted_citations', 0)
+    pub_potential = literature_result.get('publication_potential', {})
+    
+    lit_data = [
+        ['Parameter', 'Value', 'Status'],
+        ['Novelty Score', f"{lit_novelty}/100", 'Highly Novel' if lit_novelty > 80 else 'Novel' if lit_novelty > 60 else 'Incremental'],
+        ['Predicted Citations', f"{int(citations)}", 'High Impact' if citations > 50 else 'Moderate Impact' if citations > 20 else 'Low Impact'],
+    ]
+    lit_table = Table(lit_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    lit_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#663300')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8f0e8')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(lit_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== SPRINT 3: INTELLECTUAL PROPERTY ===========
+    story.append(PageBreak())
+    story.append(Paragraph("Intellectual Property Assessment", heading_style))
+    
+    ip_novelty = ip_result.get('novelty_score', 0)
+    patent_likelihood = ip_result.get('patent_likelihood_percent', 0)
+    patentability = ip_result.get('patentability', 'Unknown')
+    fto = ip_result.get('freedom_to_operate', 'Unknown')
+    
+    ip_data = [
+        ['IP Metric', 'Value', 'Status'],
+        ['Patentability', patentability, 'Patentable' if patent_likelihood > 70 else 'Potentially Patentable' if patent_likelihood > 40 else 'Difficult'],
+        ['Patent Likelihood', f"{patent_likelihood:.0f}%", 'High' if patent_likelihood > 70 else 'Moderate' if patent_likelihood > 40 else 'Low'],
+        ['Freedom to Operate', fto, fto],
+        ['Novelty Score', f"{ip_novelty}/100", 'Novel' if ip_novelty > 70 else 'Derivative'],
+    ]
+    ip_table = Table(ip_data, colWidths=[2.0*inch, 2.0*inch, 1.5*inch])
+    ip_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f0f0f0')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(ip_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # =========== RESEARCH GRADE SCORE ===========
+    story.append(Paragraph("Overall Research Grade Score", heading_style))
+    
+    # Calculate composite score from all 9 components
+    scores = [
+        pub_score,
+        mfg_score,
+        stability_score,
+        qc_score,
+        env_score,
+        repro_score,
+        literature_result.get('novelty_score', 0),
+        ip_novelty,
+    ]
+    composite_score = sum(scores) / len([s for s in scores if s > 0]) if any(scores) else 0
+    
+    grade_mapping = {
+        (90, 100): ('A+', 'Outstanding', colors.HexColor('#006600')),
+        (85, 90): ('A', 'Excellent', colors.HexColor('#009900')),
+        (75, 85): ('B+', 'Very Good', colors.HexColor('#33cc00')),
+        (65, 75): ('B', 'Good', colors.HexColor('#99cc00')),
+        (50, 65): ('C+', 'Satisfactory', colors.HexColor('#ffcc00')),
+        (40, 50): ('C', 'Fair', colors.HexColor('#ff9900')),
+        (0, 40): ('D', 'Poor', colors.HexColor('#ff0000')),
+    }
+    
+    grade_letter = 'N/A'
+    grade_desc = 'Unknown'
+    grade_color = colors.grey
+    for (low, high), (letter, desc, color) in grade_mapping.items():
+        if low <= composite_score < high:
+            grade_letter = letter
+            grade_desc = desc
+            grade_color = color
+            break
+    
+    grade_text_style = ParagraphStyle(
+        'GradeStyle',
+        parent=styles['Heading2'],
+        fontSize=24,
+        textColor=grade_color,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    story.append(Paragraph(f"Grade: {grade_letter} ({grade_desc})", grade_text_style))
+    story.append(Spacer(1, 0.15*inch))
+    
+    grade_table_data = [
+        ['Component', 'Score', 'Component', 'Score'],
+        ['Publication Readiness', f"{pub_score}/100", 'Literature Novelty', f"{literature_result.get('novelty_score', 0)}/100"],
+        ['Manufacturing', f"{mfg_score}/100", 'IP Potential', f"{ip_novelty}/100"],
+        ['Stability', f"{stability_score}/100", 'Environment', f"{env_score}/100"],
+        ['QC Compliance', f"{qc_score}/100", 'Reproducibility', f"{repro_score}/100"],
+    ]
+    grade_table = Table(grade_table_data, colWidths=[1.75*inch, 1.75*inch, 1.75*inch, 1.75*inch])
+    grade_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a3a52')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#e8eef7')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(grade_table)
+    story.append(Spacer(1, 0.3*inch))
     
     # =========== CONFIDENCE & LIMITATIONS ===========
     story.append(Paragraph("AI Model Confidence & Limitations", heading_style))

@@ -74,6 +74,28 @@ from components.charge_predictors import (
     display_pI_widget
 )
 
+# ============================================================
+# SPRINT 2: Import cellular & tumor predictors
+# ============================================================
+from components.cellular_uptake_predictor import predict_cellular_uptake, display_cellular_uptake_widget
+from components.intracellular_trafficking_predictor import predict_intracellular_trafficking, display_intracellular_trafficking_widget
+from components.payload_release_predictor import predict_payload_release, display_payload_release_widget
+from components.tumor_microenvironment_predictor import predict_tumor_microenvironment_interactions, display_tumor_microenvironment_widget
+from components.immune_response_predictor import predict_immune_response, display_immune_response_widget
+
+# ============================================================
+# SPRINT 3: Import research grade predictors
+# ============================================================
+from components.publication_readiness_predictor import predict_publication_readiness, display_publication_readiness_widget
+from components.manufacturing_scalability_predictor import predict_manufacturing_scalability, display_manufacturing_scalability_widget
+from components.stability_storage_predictor import predict_stability_storage, display_stability_storage_widget
+from components.batch_quality_control_predictor import predict_batch_quality_control, display_batch_quality_control_widget
+from components.environmental_impact_predictor import predict_environmental_impact, display_environmental_impact_widget
+from components.reproducibility_assessment_predictor import predict_reproducibility_assessment, display_reproducibility_assessment_widget
+from components.cost_analysis_predictor import predict_cost_analysis, display_cost_analysis_widget
+from components.literature_comparison_predictor import predict_literature_comparison, display_literature_comparison_widget
+from components.intellectual_property_predictor import predict_intellectual_property, display_intellectual_property_widget
+
 st.set_page_config(page_title="Design Parameters", layout="wide")
 
 # ============================================================
@@ -138,6 +160,7 @@ if "design" not in st.session_state:
         "PDI": 0.15,
         "HydrodynamicSize": 120,
         "Encapsulation": 85,
+        "EncapsulationMethod": "Passive Loading",
         "Charge": -5,
         "SurfaceArea": 250,
         "Stability": 85,
@@ -241,7 +264,7 @@ st.divider()
 # TABS FOR DIFFERENT PARAMETER GROUPS
 # ============================================================
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🧬 Core Properties", "🎨 Surface & Chemistry", "🎯 Targeting", "📊 Scoring", "🩸 Blood Safety (Sprint 1)"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🧬 Core Properties", "🎨 Surface & Chemistry", "🎯 Targeting", "📊 Scoring", "🩸 Blood Safety (Sprint 1)", "💊 Cellular & Immune (Sprint 2)", "🚀 Research Grade (Sprint 3)"])
 
 # Function to display gauge chart
 def display_score_gauge(key="gauge"):
@@ -432,11 +455,16 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     
     with col1:
+        # Ensure Encapsulation is numeric (fix for legacy "Passive Loading" string values)
+        current_encap = d.get("Encapsulation", 85)
+        if isinstance(current_encap, str):
+            current_encap = 85  # Reset to default if string
+        
         d["Encapsulation"] = st.slider(
             "Drug Encapsulation (%)",
             min_value=10,
             max_value=100,
-            value=int(d.get("Encapsulation", 85)),
+            value=int(current_encap),
             step=5,
         )
     
@@ -1108,55 +1136,103 @@ with tab5:
     st.divider()
     
     # ========================================
-    # 1. OSMOLARITY
+    # INTERACTIVE SLIDERS FOR OPTIMIZATION (MOVED TO TOP)
     # ========================================
-    st.markdown("### 1️⃣ Osmolarity (Cellular Toxicity)")
-    st.caption("Determines osmotic stress on cells")
+    st.markdown("### 🎚️ Optimize Parameters for Blood Safety")
+    st.caption("✨ Adjust key parameters below - metrics update automatically in real-time")
     
-    display_osmolarity_widget(d)
+    # Main optimization controls - 3 columns for primary parameters
+    opt_col1, opt_col2, opt_col3 = st.columns(3)
+    
+    with opt_col1:
+        st.markdown("#### 🔴 Charge (Affects Hemolysis & pI)")
+        d["Charge"] = st.slider(
+            "Charge (mV)",
+            min_value=-50,
+            max_value=50,
+            value=int(d.get("Charge", -30)),
+            step=5,
+            key="sprint1_charge_opt",
+            help="Positive charges → hemolysis & protein binding. Neutral (±5) = best"
+        )
+        st.caption("💡 Keep near 0 mV for safety")
+    
+    with opt_col2:
+        st.markdown("#### 💛 PEG Density (Affects Osmolarity & Half-Life)")
+        d["PEG_Density"] = st.slider(
+            "PEG Density (%)",
+            min_value=0,
+            max_value=100,
+            value=int(d.get("PEG_Density", 50)),
+            step=5,
+            key="sprint1_peg_opt",
+            help="Higher PEG = stealth coat + longer circulation, but increases osmolarity"
+        )
+        st.caption("💡 30-60% optimal for most applications")
+    
+    with opt_col3:
+        st.markdown("#### 🔵 Drug Loading (Affects Osmolarity)")
+        d["Drug"] = st.slider(
+            "Drug Loading (%)",
+            min_value=0,
+            max_value=100,
+            value=int(d.get("Drug", 50)),
+            step=5,
+            key="sprint1_drug_opt",
+            help="Higher loading increases osmotic activity"
+        )
+        st.caption("💡 70-90% loading is typical target")
+    
+    # Secondary parameters (hidden in expander)
+    with st.expander("⚙️ Advanced Fine-Tuning (Optional)"):
+        adv_col1, adv_col2 = st.columns(2)
+        
+        with adv_col1:
+            st.markdown("**Hydrophobicity** (Affects Hemolysis)")
+            d["Hydrophobicity"] = st.slider(
+                "Hydrophobicity (LogP)",
+                min_value=0.0,
+                max_value=5.0,
+                value=float(d.get("Hydrophobicity", 1.5)),
+                step=0.1,
+                key="sprint1_hydro_opt",
+                help="Optimal: 0.5-2.5 LogP. Higher = membrane penetration risk"
+            )
+        
+        with adv_col2:
+            st.markdown("**Encapsulation %** (Affects Osmolarity)")
+            # Ensure Encapsulation is numeric (fix for legacy "Passive Loading" string values)
+            current_encap2 = d.get("Encapsulation", 85)
+            if isinstance(current_encap2, str):
+                current_encap2 = 85  # Reset to default if string
+            
+            d["Encapsulation"] = st.slider(
+                "Encapsulation Efficiency (%)",
+                min_value=50,
+                max_value=100,
+                value=int(current_encap2),
+                step=5,
+                key="sprint1_encap_opt",
+                help="Lower efficiency = more water = higher osmolarity"
+            )
+    
+    # Sync design changes
+    st.session_state.design = d
     
     st.divider()
     
     # ========================================
-    # 2. HEMOLYTIC ACTIVITY
+    # REAL-TIME ASSESSMENT (NOW AFTER SLIDERS)
     # ========================================
-    st.markdown("### 2️⃣ Hemolytic Activity (Blood Compatibility)")
-    st.caption("Predicts red blood cell (RBC) lysis risk")
+    st.markdown("### 📊 Real-Time Blood Safety Assessment")
     
-    display_hemolysis_widget(d)
-    
-    st.divider()
-    
-    # ========================================
-    # 3. BLOOD HALF-LIFE
-    # ========================================
-    st.markdown("### 3️⃣ Blood Half-Life (Circulation Time)")
-    st.caption("Multi-factor prediction: Size + PEG + Charge + Material")
-    
-    display_halflife_widget(d)
-    
-    st.divider()
-    
-    # ========================================
-    # 4. ISOELECTRIC POINT (pI)
-    # ========================================
-    st.markdown("### 4️⃣ Isoelectric Point (pH Behavior)")
-    st.caption("Predicts charge at different pH environments")
-    
-    display_pI_widget(d)
-    
-    st.divider()
-    
-    # ========================================
-    # SUMMARY ASSESSMENT
-    # ========================================
-    st.markdown("### 📋 Blood Safety Summary")
-    
+    # Recalculate metrics with current slider values
     osmolarity_result = calculate_osmolarity(d)
     hemolysis_result = calculate_hemolysis_risk(d)
     halflife_result = predict_improved_blood_half_life(d)
     pI_result = calculate_isoelectric_point(d)
     
+    # Quick status cards
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -1177,7 +1253,7 @@ with tab5:
     
     with col3:
         st.metric(
-            "🩸 Half-Life",
+            "⏱️ Half-Life",
             f"{halflife_result['blood_half_life_hours']:.2f} hrs",
             help=f"Mechanism: {halflife_result['clearance_mechanism']}"
         )
@@ -1192,7 +1268,39 @@ with tab5:
     
     st.divider()
     
-    # Overall safety score
+    # ========================================
+    # 1. OSMOLARITY DETAILS
+    # ========================================
+    with st.expander("📍 Osmolarity Details (Cellular Toxicity)", expanded=False):
+        st.markdown("**Determines osmotic stress on cells**")
+        display_osmolarity_widget(d)
+    
+    # ========================================
+    # 2. HEMOLYTIC ACTIVITY DETAILS
+    # ========================================
+    with st.expander("🩸 Hemolytic Activity Details (Blood Compatibility)", expanded=False):
+        st.markdown("**Predicts red blood cell (RBC) lysis risk**")
+        display_hemolysis_widget(d)
+    
+    # ========================================
+    # 3. BLOOD HALF-LIFE DETAILS
+    # ========================================
+    with st.expander("⏱️ Blood Half-Life Details (Circulation Time)", expanded=False):
+        st.markdown("**Multi-factor prediction: Size + PEG + Charge + Material**")
+        display_halflife_widget(d)
+    
+    # ========================================
+    # 4. ISOELECTRIC POINT DETAILS
+    # ========================================
+    with st.expander("📌 Isoelectric Point Details (pH Behavior)", expanded=False):
+        st.markdown("**Predicts charge at different pH environments**")
+        display_pI_widget(d)
+    
+    st.divider()
+    
+    # ========================================
+    # OVERALL BLOOD SAFETY SCORE
+    # ========================================
     st.markdown("### 🎯 Overall Blood Safety Score")
     
     # Calculate composite blood safety score (0-100)
@@ -1242,81 +1350,118 @@ with tab5:
         st.metric("Aggregation", f"{safety_components['aggregation']:.0f}/100")
     
     st.divider()
+
+# ============================================================================
+# TAB 6: SPRINT 2 - CELLULAR & IMMUNE ASSESSMENT
+# ============================================================================
+
+with tab6:
+    st.subheader("💊 Sprint 2: Cellular Uptake, Trafficking, & Immune Response")
+    
+    st.markdown("""
+    **Comprehensive cellular and immune assessment** for in vitro efficacy.
+    
+    Sprint 2 predicts how nanoparticles interact with target cells, move inside cells, 
+    release their payload, navigate the tumor microenvironment, and evade the immune system.
+    """)
+    
+    st.divider()
     
     # ========================================
-    # INTERACTIVE SLIDERS FOR OPTIMIZATION
+    # INTERACTIVE SLIDERS FOR OPTIMIZATION (SPRINT 2)
     # ========================================
-    st.markdown("### 🎚️ Fine-Tune Parameters for Blood Safety")
-    st.caption("Adjust these key parameters and watch blood safety metrics update in real-time")
+    st.markdown("### 🎚️ Optimize Parameters for Cellular & Immune Response")
+    st.caption("✨ Adjust key parameters below - all 5 metrics update automatically in real-time")
     
-    # Main optimization controls
+    # Main optimization controls - 3 columns for primary parameters
     opt_col1, opt_col2, opt_col3 = st.columns(3)
     
     with opt_col1:
-        st.markdown("#### 🔴 Charge (Affects Hemolysis & pI)")
+        st.markdown("#### 📏 Size (Affects All Components)")
+        d["Size"] = st.slider(
+            "Size (nm)",
+            min_value=20,
+            max_value=300,
+            value=int(d.get("Size", 100)),
+            step=10,
+            key="sprint2_size_opt",
+            help="Optimal 50-150nm for cellular uptake. Smaller = better for trafficking. Larger = better for tumor penetration"
+        )
+        st.caption("💡 100 nm is ideal for most applications")
+    
+    with opt_col2:
+        st.markdown("#### 🔴 Charge (Affects Uptake & Immune)")
         d["Charge"] = st.slider(
             "Charge (mV)",
             min_value=-50,
             max_value=50,
-            value=int(d.get("Charge", -30)),
+            value=int(d.get("Charge", -5)),
             step=5,
-            key="sprint1_charge_opt",
-            help="Positive charges → hemolysis & protein binding. Neutral (±5) = best"
+            key="sprint2_charge_opt",
+            help="Positive charges → better uptake but more immune activation. Negative → immune evasion"
         )
-        st.caption("💡 Keep near 0 mV for safety")
-    
-    with opt_col2:
-        st.markdown("#### 💛 PEG Density (Affects Osmolarity & Half-Life)")
-        d["PEG_Density"] = st.slider(
-            "PEG Density (%)",
-            min_value=0,
-            max_value=100,
-            value=int(d.get("PEG_Density", 50)),
-            step=5,
-            key="sprint1_peg_opt",
-            help="Higher PEG = stealth coat + longer circulation, but increases osmolarity"
-        )
-        st.caption("💡 30-60% optimal for most applications")
+        st.caption("💡 -5 to +5 is optimal")
     
     with opt_col3:
-        st.markdown("#### 🔵 Drug Loading (Affects Osmolarity)")
-        d["Drug"] = st.slider(
-            "Drug Loading (%)",
-            min_value=0,
-            max_value=100,
-            value=int(d.get("Drug", 50)),
-            step=5,
-            key="sprint1_drug_opt",
-            help="Higher loading increases osmotic activity"
+        st.markdown("#### 🧬 Material Type (Affects All Components)")
+        material_options = list(AVAILABLE_MATERIALS)  # Convert to list
+        current_material = d.get("Material", "Lipid NP")
+        try:
+            material_index = material_options.index(current_material)
+        except ValueError:
+            material_index = 0  # Default to first option if not found
+        
+        d["Material"] = st.selectbox(
+            "Material",
+            material_options,
+            index=material_index,
+            key="sprint2_material_opt",
+            help="Different materials have different cellular uptake and immune profiles"
         )
-        st.caption("💡 70-90% loading is typical target")
     
-    # Secondary parameters (if users want fine control)
+    # Secondary parameters (hidden in expander)
     with st.expander("⚙️ Advanced Fine-Tuning (Optional)"):
-        adv_col1, adv_col2 = st.columns(2)
+        adv_col1, adv_col2, adv_col3 = st.columns(3)
         
         with adv_col1:
-            st.markdown("**Hydrophobicity** (Affects Hemolysis)")
+            st.markdown("**Ligand Targeting**")
+            ligand_options = get_all_ligands() + ["None"]
+            current_ligand = d.get("Ligand", "None")
+            try:
+                ligand_index = ligand_options.index(current_ligand)
+            except ValueError:
+                ligand_index = ligand_options.index("None")  # Fallback to None if not found
+            
+            d["Ligand"] = st.selectbox(
+                "Ligand",
+                ligand_options,
+                index=ligand_index,
+                key="sprint2_ligand_opt",
+                help="Targeting ligands increase specific cell uptake"
+            )
+        
+        with adv_col2:
+            st.markdown("**PEG Density** (Stealth Coating)")
+            d["PEG_Density"] = st.slider(
+                "PEG Density (%)",
+                min_value=0,
+                max_value=100,
+                value=int(d.get("PEG_Density", 50)),
+                step=5,
+                key="sprint2_peg_opt",
+                help="Higher PEG = better immune evasion but reduced cellular uptake"
+            )
+        
+        with adv_col3:
+            st.markdown("**Hydrophobicity**")
             d["Hydrophobicity"] = st.slider(
                 "Hydrophobicity (LogP)",
                 min_value=0.0,
                 max_value=5.0,
                 value=float(d.get("Hydrophobicity", 1.5)),
                 step=0.1,
-                key="sprint1_hydro_opt",
-                help="Optimal: 0.5-2.5 LogP. Higher = membrane penetration risk"
-            )
-        
-        with adv_col2:
-            st.markdown("**Encapsulation %** (Affects Osmolarity)")
-            d["Encapsulation"] = st.slider(
-                "Encapsulation Efficiency (%)",
-                min_value=50,
-                max_value=100,
-                value=int(d.get("Encapsulation", 85)),
-                step=5,
-                key="sprint1_encap_opt",
-                help="Lower efficiency = more water = higher osmolarity"
+                key="sprint2_hydro_opt",
+                help="Optimal: 0.5-2.5 LogP. Affects membrane interaction"
             )
     
     # Sync design changes
@@ -1324,96 +1469,607 @@ with tab5:
     
     st.divider()
     
-    # RECALCULATE WITH NEW VALUES
-    st.markdown("### 🔄 Updated Assessment (Real-Time)")
+    # Sprint 2 has 5 major assessment areas
+    sprint2_tabs = st.tabs([
+        "🔵 Cellular Uptake",
+        "📍 Intracellular Trafficking", 
+        "💊 Payload Release",
+        "🏥 Tumor Microenvironment",
+        "🛡️ Immune Response"
+    ])
     
-    # Recalculate all Sprint 1 metrics with current slider values
-    osmolarity_result_updated = calculate_osmolarity(d)
-    hemolysis_result_updated = calculate_hemolysis_risk(d)
-    halflife_result_updated = predict_improved_blood_half_life(d)
-    pI_result_updated = calculate_isoelectric_point(d)
+    # Get disease context for tumor microenvironment
+    selected_disease = st.session_state.get("selected_disease", "Hepatocellular Carcinoma")
+    disease_mapping = {
+        "Hepatocellular Carcinoma": "HCC",
+        "Pancreatic Cancer": "PDAC",
+        "Melanoma": "Melanoma",
+        "Breast Cancer": "Breast"
+    }
+    disease_context = disease_mapping.get(selected_disease, "HCC")
     
-    # Updated status cards
-    col1, col2, col3, col4 = st.columns(4)
+    # ========================================
+    # SPRINT 2.1: CELLULAR UPTAKE
+    # ========================================
+    with sprint2_tabs[0]:
+        st.markdown("### 🔵 Cellular Uptake & Internalization")
+        st.caption("Predict how efficiently nanoparticles enter target cells")
+        
+        if st.checkbox("Show detailed cellular uptake analysis", key="uptake_detail"):
+            display_cellular_uptake_widget(d)
+        else:
+            uptake_result = predict_cellular_uptake(d)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Uptake Efficiency", f"{uptake_result['uptake_efficiency']:.1f}%")
+            with col2:
+                st.metric("Uptake Score", f"{uptake_result['uptake_score']:.0f}/100")
+            with col3:
+                st.metric("Time to Saturation", f"{uptake_result['time_to_saturation']:.1f} hrs")
+            
+            st.markdown(f"**Mechanism:** {uptake_result['uptake_mechanism']}")
+            st.markdown(f"**Pathway:** {uptake_result['uptake_pathway']}")
+    
+    # ========================================
+    # SPRINT 2.2: INTRACELLULAR TRAFFICKING
+    # ========================================
+    with sprint2_tabs[1]:
+        st.markdown("### 📍 Intracellular Trafficking & Localization")
+        st.caption("Predict where particles go inside cells")
+        
+        if st.checkbox("Show detailed trafficking analysis", key="trafficking_detail"):
+            display_intracellular_trafficking_widget(d)
+        else:
+            trafficking_result = predict_intracellular_trafficking(d)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Endosomal Escape", f"{trafficking_result['endosomal_escape']:.1f}%")
+            with col2:
+                st.metric("Cytoplasmic Access", f"{trafficking_result['cytoplasmic_access']:.1f}%")
+            with col3:
+                st.metric("Retention Time", f"{trafficking_result['retention_time']:.1f} hrs")
+            
+            st.markdown(f"**Primary Location:** {trafficking_result['primary_location']}")
+            st.markdown(f"**Escape Mechanism:** {trafficking_result['escape_mechanism']}")
+    
+    # ========================================
+    # SPRINT 2.3: PAYLOAD RELEASE
+    # ========================================
+    with sprint2_tabs[2]:
+        st.markdown("### 💊 Payload Release & Bioavailability")
+        st.caption("Predict drug release kinetics and intracellular bioavailability")
+        
+        if st.checkbox("Show detailed release analysis", key="release_detail"):
+            display_payload_release_widget(d)
+        else:
+            release_result = predict_payload_release(d)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Bioavailability", f"{release_result['intracellular_bioavailability']:.1f}%")
+            with col2:
+                st.metric("24-Hour Release", f"{release_result['sustained_release_24h']:.1f}%")
+            with col3:
+                st.metric("Time to 50%", f"{release_result['time_to_50_release']:.1f} hrs")
+            
+            st.markdown(f"**Mechanism:** {release_result['release_mechanism']}")
+            st.markdown(f"**Optimal Dosing:** {release_result['optimal_dosing_interval']}")
+    
+    # ========================================
+    # SPRINT 2.4: TUMOR MICROENVIRONMENT
+    # ========================================
+    with sprint2_tabs[3]:
+        st.markdown("### 🏥 Tumor Microenvironment Interactions")
+        st.caption(f"Predict behavior in {selected_disease} tumor microenvironment")
+        
+        if st.checkbox("Show detailed tumor analysis", key="tumor_detail"):
+            display_tumor_microenvironment_widget(d, disease_context)
+        else:
+            tumor_result = predict_tumor_microenvironment_interactions(d, disease_context)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("ECM Penetration", f"{tumor_result['extracellular_matrix_penetration']:.1f}%")
+            with col2:
+                st.metric("Tumor Accumulation", f"{tumor_result['tumor_accumulation']:.1f}%")
+            with col3:
+                st.metric("Penetration Depth", f"{tumor_result['penetration_depth']:.0f} μm")
+            
+            st.markdown("**Microenvironment Challenges:**")
+            for component, interaction in tumor_result['interactions'].items():
+                st.write(f"• **{component}**: {interaction}")
+    
+    # ========================================
+    # SPRINT 2.5: IMMUNE RESPONSE
+    # ========================================
+    with sprint2_tabs[4]:
+        st.markdown("### 🛡️ Immune System Response")
+        st.caption("Predict immune recognition and activation")
+        
+        if st.checkbox("Show detailed immune analysis", key="immune_detail"):
+            display_immune_response_widget(d)
+        else:
+            immune_result = predict_immune_response(d)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("MPS Capture Risk", f"{immune_result['mps_capture']:.1f}%")
+            with col2:
+                st.metric("Immune Evasion", f"{immune_result['immune_evasion_score']:.1f}%")
+            with col3:
+                st.metric("Danger Level", immune_result['material_danger_level'])
+            
+            st.markdown("**Immune Components:**")
+            for component, level in immune_result['immune_components'].items():
+                st.write(f"• **{component}**: {level:.1f}%")
+    
+    st.divider()
+    
+    # ========================================
+    # SPRINT 2 OVERALL SCORE
+    # ========================================
+    st.markdown("### 🎯 Sprint 2 Cellular & Immune Score")
+    
+    # Recalculate all Sprint 2 metrics
+    uptake = predict_cellular_uptake(d)
+    trafficking = predict_intracellular_trafficking(d)
+    release = predict_payload_release(d)
+    tumor = predict_tumor_microenvironment_interactions(d, disease_context)
+    immune = predict_immune_response(d)
+    
+    # Calculate composite score
+    sprint2_score = (
+        uptake['uptake_score'] * 0.15 +
+        trafficking['trafficking_score'] * 0.15 +
+        release['bioavailability_score'] * 0.20 +
+        tumor['tumor_score'] * 0.30 +
+        immune['immune_evasion_score'] * 0.20
+    )
+    
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        osmo_status = "✅" if 250 <= osmolarity_result_updated['osmolarity_mosm_kg'] <= 350 else "⚠️"
-        st.metric(
-            f"{osmo_status} Osmolarity",
-            f"{osmolarity_result_updated['osmolarity_mosm_kg']:.0f} mOsm/kg",
-            delta=f"{osmolarity_result_updated['osmolarity_mosm_kg'] - osmolarity_result['osmolarity_mosm_kg']:+.0f}",
-            help="Safe: 250-350"
-        )
+        fig_sprint2 = go.Figure(data=[go.Indicator(
+            mode="gauge+number+delta",
+            value=sprint2_score,
+            domain={"x": [0, 1], "y": [0, 1]},
+            title={"text": "Sprint 2 Score"},
+            delta={"reference": 75, "suffix": " vs target"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {"color": "darkgreen"},
+                "steps": [
+                    {"range": [0, 30], "color": "rgba(255, 100, 100, 0.3)"},
+                    {"range": [30, 60], "color": "rgba(255, 200, 0, 0.3)"},
+                    {"range": [60, 80], "color": "rgba(150, 255, 100, 0.3)"},
+                    {"range": [80, 100], "color": "rgba(100, 255, 100, 0.3)"}
+                ],
+                "threshold": {
+                    "line": {"color": "red", "width": 4},
+                    "thickness": 0.75,
+                    "value": 75
+                }
+            }
+        )])
+        
+        fig_sprint2.update_layout(height=350, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_sprint2, use_container_width=True, key=f"sprint2_score_{sprint2_score:.1f}")
     
     with col2:
-        hemolysis_status = "✅" if hemolysis_result_updated['hemolysis_score'] < 35 else "⚠️" if hemolysis_result_updated['hemolysis_score'] < 50 else "❌"
-        st.metric(
-            f"{hemolysis_status} Hemolysis",
-            f"{hemolysis_result_updated['hemolysis_score']:.0f}/100",
-            delta=f"{hemolysis_result_updated['hemolysis_score'] - hemolysis_result['hemolysis_score']:+.0f}",
-            help="Lower is better"
-        )
+        st.markdown("### 📊 Component Scores")
+        st.metric("Uptake", f"{uptake['uptake_score']:.0f}/100")
+        st.metric("Trafficking", f"{trafficking['trafficking_score']:.0f}/100")
+        st.metric("Release", f"{release['bioavailability_score']:.0f}/100")
+        st.metric("Tumor", f"{tumor['tumor_score']:.0f}/100")
+        st.metric("Immune", f"{immune['immune_evasion_score']:.0f}/100")
     
-    with col3:
-        st.metric(
-            "⏱️ Half-Life",
-            f"{halflife_result_updated['blood_half_life_hours']:.2f} hrs",
-            delta=f"{halflife_result_updated['blood_half_life_hours'] - halflife_result['blood_half_life_hours']:+.2f}",
-            help=halflife_result_updated['clearance_mechanism']
-        )
+    st.divider()
+
+# ============================================================================
+# TAB 7: SPRINT 3 - RESEARCH GRADE ASSESSMENT
+# ============================================================================
+
+with tab7:
+    st.subheader("🚀 Sprint 3: Research Grade & Commercial Readiness")
     
-    with col4:
-        pI_risk = "✅" if "Low" in pI_result_updated['aggregation_concern'] else "🟡" if "Moderate" in pI_result_updated['aggregation_concern'] else "⚠️"
-        st.metric(
-            "📌 pI",
-            f"{pI_risk} pH {pI_result_updated['isoelectric_point_pH']:.1f}",
-            help=pI_result_updated['aggregation_concern']
-        )
+    st.markdown("""
+    **Comprehensive research-to-market readiness assessment** for next-generation studies.
+    
+    Sprint 3 evaluates publication potential, manufacturing feasibility, stability infrastructure, 
+    quality control requirements, environmental impact, reproducibility, cost projections, 
+    literature positioning, and intellectual property landscape.
+    """)
     
     st.divider()
     
-    # Recommendations for improvement
-    st.markdown("### 💡 Recommendations for Blood Safety")
+    # ========================================
+    # INTERACTIVE CONTROLS FOR SPRINT 3 OPTIMIZATION
+    # ========================================
+    st.markdown("### 🎚️ Optimize Parameters for Research Grade")
+    st.caption("✨ Adjust key parameters below - all 9 research metrics update automatically")
     
-    # Recommendations for improvement
-    st.markdown("### 💡 Recommendations for Blood Safety")
+    # Main optimization controls
+    opt_col1, opt_col2, opt_col3 = st.columns(3)
     
-    recommendations = []
+    with opt_col1:
+        st.markdown("#### 📏 Size Optimization")
+        d["Size"] = st.slider(
+            "Size (nm) for Research Grade",
+            min_value=20,
+            max_value=300,
+            value=int(d.get("Size", 100)),
+            step=10,
+            key="sprint3_size_opt",
+            help="Optimal 80-150nm for publication and manufacturing"
+        )
+        st.caption("💡 100nm = Gold standard")
     
-    if not (250 <= osmolarity_result_updated['osmolarity_mosm_kg'] <= 350):
-        recommendations.append("🔧 **Osmolarity**: Adjust based on recommendations above")
+    with opt_col2:
+        st.markdown("#### 🔴 Charge for Stability")
+        d["Charge"] = st.slider(
+            "Charge (mV) for Stability",
+            min_value=-50,
+            max_value=50,
+            value=int(d.get("Charge", -5)),
+            step=5,
+            key="sprint3_charge_opt",
+            help="More stable around ±5 to ±20 mV"
+        )
+        st.caption("💡 Balance between uptake & safety")
     
-    if hemolysis_result_updated['hemolysis_score'] > 35:
-        recommendations.append("🔧 **Hemolysis**: " + (hemolysis_result_updated['primary_drivers'][0] if hemolysis_result_updated['primary_drivers'] else "Reduce charge"))
+    with opt_col3:
+        st.markdown("#### 🧬 Material Selection")
+        material_options = list(AVAILABLE_MATERIALS)
+        current_material = d.get("Material", "Lipid NP")
+        try:
+            material_index = material_options.index(current_material)
+        except ValueError:
+            material_index = 0
+        
+        d["Material"] = st.selectbox(
+            "Material for Manufacturability",
+            material_options,
+            index=material_index,
+            key="sprint3_material_opt",
+            help="Affects scalability, cost, environmental impact"
+        )
     
-    if halflife_result_updated['blood_half_life_hours'] < 2:
-        recommendations.append(f"🔧 **Circulation**: Increase PEGylation or reduce size for extended half-life")
+    # Advanced controls for research optimization
+    with st.expander("⚙️ Research Optimization (Advanced)", expanded=False):
+        adv_col1, adv_col2, adv_col3 = st.columns(3)
+        
+        with adv_col1:
+            st.markdown("**PEG Density** (Publication impact)")
+            d["PEG_Density"] = st.slider(
+                "PEG Density for Publication",
+                min_value=0,
+                max_value=100,
+                value=int(d.get("PEG_Density", 50)),
+                step=5,
+                key="sprint3_peg_opt",
+                help="Higher PEG = more novel publication + better stability"
+            )
+        
+        with adv_col2:
+            st.markdown("**Ligand for Novelty**")
+            ligand_options = get_all_ligands() + ["None"]
+            current_ligand = d.get("Ligand", "None")
+            try:
+                ligand_index = ligand_options.index(current_ligand)
+            except ValueError:
+                ligand_index = ligand_options.index("None")
+            
+            d["Ligand"] = st.selectbox(
+                "Targeting Ligand (Increases Novelty)",
+                ligand_options,
+                index=ligand_index,
+                key="sprint3_ligand_opt",
+                help="Specific ligand targeting enhances publication novelty"
+            )
+        
+        with adv_col3:
+            st.markdown("**Encapsulation Method**")
+            encapsulation_options = ["Passive Loading", "Active Loading", "Electroporation", 
+                                   "Hydrodynamic Injection", "Microfluidic", "Emulsification"]
+            current_encaps = d.get("EncapsulationMethod", "Passive Loading")
+            try:
+                encaps_index = encapsulation_options.index(current_encaps)
+            except ValueError:
+                encaps_index = 0
+            
+            d["EncapsulationMethod"] = st.selectbox(
+                "Encapsulation Method (Manufacturing Impact)",
+                encapsulation_options,
+                index=encaps_index,
+                key="sprint3_encaps_opt",
+                help="Advanced methods increase complexity but provide novelty"
+            )
     
-    if "High" in pI_result_updated['aggregation_concern']:
-        recommendations.append(f"🔧 **Aggregation**: Risk at pH {pI_result_updated['isoelectric_point_pH']:.1f} - Consider pH-responsive release")
-    
-    if recommendations:
-        for rec in recommendations:
-            st.warning(rec)
-    else:
-        st.success("✅ All blood safety parameters within acceptable ranges!")
-    
+    # Sync design changes
+    st.session_state.design = d
     
     st.divider()
     
-    # Recommendations
-    st.markdown("### 💡 Smart Recommendations")
-    recommendations = get_recommendations(d)
+    # Create 9 sub-tabs for Sprint 3 components
+    sprint3_tabs = st.tabs([
+        "📚 Publication Readiness",
+        "🏭 Manufacturing Scalability",
+        "📦 Stability & Storage",
+        "✅ Batch QC",
+        "🌍 Environmental Impact",
+        "🔄 Reproducibility",
+        "💰 Cost Analysis",
+        "📖 Literature Comparison",
+        "⚖️ Intellectual Property"
+    ])
     
-    for rec in recommendations:
-        if "✅" in rec:
-            st.success(rec)
-        elif "🔴" in rec:
-            st.error(rec)
-        elif "🟡" in rec:
-            st.warning(rec)
+    # ========================================
+    # SPRINT 3.1: PUBLICATION READINESS
+    # ========================================
+    with sprint3_tabs[0]:
+        st.markdown("### 📚 Publication Readiness Assessment")
+        st.caption("Evaluate data completeness and publication potential")
+        
+        if st.checkbox("Show detailed analysis##pub", key="pub_detail"):
+            display_publication_readiness_widget(d)
         else:
-            st.info(rec)
+            pub_result = predict_publication_readiness(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Data Completeness", f"{pub_result['data_completeness']:.0f}%")
+            with col2:
+                st.metric("Statistical Power", f"{pub_result['statistical_power']:.0f}%")
+            with col3:
+                st.metric("Novelty Score", f"{pub_result['novelty_score']:.0f}%")
+            with col4:
+                st.metric("Readiness", pub_result['readiness_level'])
+    
+    # ========================================
+    # SPRINT 3.2: MANUFACTURING SCALABILITY
+    # ========================================
+    with sprint3_tabs[1]:
+        st.markdown("### 🏭 Manufacturing Scalability")
+        st.caption("Assess production feasibility and scaling potential")
+        
+        if st.checkbox("Show detailed analysis##mfg", key="mfg_detail"):
+            display_manufacturing_scalability_widget(d)
+        else:
+            mfg_result = predict_manufacturing_scalability(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Production Feasibility", f"{mfg_result['production_feasibility']:.0f}%")
+            with col2:
+                st.metric("GMP Readiness", f"{mfg_result['gmp_readiness']:.0f}%")
+            with col3:
+                st.metric("Cost/Dose", f"${mfg_result['cost_per_dose_usd']:.2f}")
+            with col4:
+                st.metric("Scalability", mfg_result['scalability_level'])
+    
+    # ========================================
+    # SPRINT 3.3: STABILITY & STORAGE
+    # ========================================
+    with sprint3_tabs[2]:
+        st.markdown("### 📦 Stability & Storage")
+        st.caption("Predict shelf-life and storage requirements")
+        
+        if st.checkbox("Show detailed analysis##stab", key="stab_detail"):
+            display_stability_storage_widget(d)
+        else:
+            stab_result = predict_stability_storage(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Shelf-Life (25°C)", f"{stab_result['shelf_life_25c_months']:.0f}m")
+            with col2:
+                st.metric("Shelf-Life (4°C)", f"{stab_result['shelf_life_4c_months']:.0f}m")
+            with col3:
+                st.metric("Stability Score", f"{stab_result['stability_score']:.0f}/100")
+            with col4:
+                st.metric("Recommended", stab_result['recommended_storage'])
+    
+    # ========================================
+    # SPRINT 3.4: BATCH QUALITY CONTROL
+    # ========================================
+    with sprint3_tabs[3]:
+        st.markdown("### ✅ Batch Quality Control")
+        st.caption("Define QC parameters and release criteria")
+        
+        if st.checkbox("Show detailed analysis##qc", key="qc_detail"):
+            display_batch_quality_control_widget(d)
+        else:
+            qc_result = predict_batch_quality_control(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("QC Score", f"{qc_result['total_qc_score']:.0f}/100")
+            with col2:
+                st.metric("Release Rate", f"{qc_result['total_release_rate']:.0f}%")
+            with col3:
+                st.metric("Batch Consistency", f"{qc_result['batch_consistency_score']:.1f}%")
+            with col4:
+                st.metric("GMP Compliance", f"{qc_result['gmp_compliance_level']:.0f}%")
+    
+    # ========================================
+    # SPRINT 3.5: ENVIRONMENTAL IMPACT
+    # ========================================
+    with sprint3_tabs[4]:
+        st.markdown("### 🌍 Environmental Impact")
+        st.caption("Assess biodegradability and sustainability")
+        
+        if st.checkbox("Show detailed analysis##env", key="env_detail"):
+            display_environmental_impact_widget(d)
+        else:
+            env_result = predict_environmental_impact(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Sustainability", f"{env_result['sustainability_score']:.0f}/100")
+            with col2:
+                st.metric("Biodegradability", f"{env_result['biodegradability']:.0f}%")
+            with col3:
+                st.metric("Carbon Footprint", f"{env_result['carbon_footprint_kg']:.2f}kg")
+            with col4:
+                st.metric("Classification", env_result['environmental_classification'][:5])
+    
+    # ========================================
+    # SPRINT 3.6: REPRODUCIBILITY
+    # ========================================
+    with sprint3_tabs[5]:
+        st.markdown("### 🔄 Reproducibility Assessment")
+        st.caption("Evaluate design reproducibility across labs")
+        
+        if st.checkbox("Show detailed analysis##repro", key="repro_detail"):
+            display_reproducibility_assessment_widget(d)
+        else:
+            repro_result = predict_reproducibility_assessment(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Reproducibility", f"{repro_result['reproducibility_score']:.0f}/100")
+            with col2:
+                st.metric("Batch Variation", f"±{repro_result['batch_to_batch_variation']:.1f}%")
+            with col3:
+                st.metric("Critical Params", len(repro_result['critical_parameters']))
+            with col4:
+                st.metric("Difficulty", repro_result['difficulty_level'][:5])
+    
+    # ========================================
+    # SPRINT 3.7: COST ANALYSIS
+    # ========================================
+    with sprint3_tabs[6]:
+        st.markdown("### 💰 Cost Analysis")
+        st.caption("Project manufacturing and development costs")
+        
+        if st.checkbox("Show detailed analysis##cost", key="cost_detail"):
+            display_cost_analysis_widget(d)
+        else:
+            cost_result = predict_cost_analysis(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("COGS (10mg)", f"${cost_result['cost_per_dose_10mg_usd']:.2f}")
+            with col2:
+                st.metric("Dev Cost", f"${cost_result['development_cost_total']:,.0f}")
+            with col3:
+                st.metric("Gross Margin", f"{cost_result['gross_margin_percent']:.1f}%")
+            with col4:
+                st.metric("Timeline", f"{cost_result['total_timeline_months']}mo")
+    
+    # ========================================
+    # SPRINT 3.8: LITERATURE COMPARISON
+    # ========================================
+    with sprint3_tabs[7]:
+        st.markdown("### 📖 Literature Comparison")
+        st.caption("Compare design against published benchmarks")
+        
+        if st.checkbox("Show detailed analysis##lit", key="lit_detail"):
+            display_literature_comparison_widget(d)
+        else:
+            lit_result = predict_literature_comparison(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Novelty Score", f"{lit_result['novelty_score']:.0f}/100")
+            with col2:
+                st.metric("Predicted Citations", f"{lit_result['predicted_citations']:,}")
+            with col3:
+                st.metric("Size Deviation", f"{lit_result['size_deviation_percent']:.1f}%")
+            with col4:
+                st.metric("Applications", len(lit_result['typical_applications']))
+    
+    # ========================================
+    # SPRINT 3.9: INTELLECTUAL PROPERTY
+    # ========================================
+    with sprint3_tabs[8]:
+        st.markdown("### ⚖️ Intellectual Property")
+        st.caption("Assess patent landscape and novelty")
+        
+        if st.checkbox("Show detailed analysis##ip", key="ip_detail"):
+            display_intellectual_property_widget(d)
+        else:
+            ip_result = predict_intellectual_property(d)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Novelty Score", f"{ip_result['novelty_score']:.0f}/100")
+            with col2:
+                st.metric("Patent Likelihood", f"{ip_result['patent_likelihood_percent']}%")
+            with col3:
+                st.metric("Freedom to Operate", f"{ip_result['freedom_to_operate']}/100")
+            with col4:
+                st.metric("Threat Level", ip_result['threat_level'][:7])
+    
+    st.divider()
+    
+    # ========================================
+    # SPRINT 3 OVERALL SCORE
+    # ========================================
+    st.markdown("### 🎯 Sprint 3 Research Grade Overall Score")
+    
+    # Recalculate all Sprint 3 metrics
+    pub = predict_publication_readiness(d)
+    mfg = predict_manufacturing_scalability(d)
+    stab = predict_stability_storage(d)
+    qc = predict_batch_quality_control(d)
+    env = predict_environmental_impact(d)
+    repro = predict_reproducibility_assessment(d)
+    cost = predict_cost_analysis(d)
+    lit = predict_literature_comparison(d)
+    ip = predict_intellectual_property(d)
+    
+    # Calculate composite score
+    sprint3_score = (
+        pub['readiness_score'] * 0.12 +
+        mfg['scalability_score'] * 0.13 +
+        stab['stability_score'] * 0.11 +
+        qc['total_qc_score'] * 0.12 +
+        env['sustainability_score'] * 0.10 +
+        repro['reproducibility_score'] * 0.12 +
+        (100 - (cost['payback_period_months'] / 120 * 100)) * 0.10 +  # Cost factor
+        lit['novelty_score'] * 0.10 +
+        ip['novelty_score'] * 0.10
+    )
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        fig_sprint3 = go.Figure(data=[go.Indicator(
+            mode="gauge+number+delta",
+            value=sprint3_score,
+            domain={"x": [0, 1], "y": [0, 1]},
+            title={"text": "Sprint 3 Research Grade Score"},
+            delta={"reference": 75, "suffix": " vs target"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {"color": "darkblue"},
+                "steps": [
+                    {"range": [0, 30], "color": "rgba(255, 100, 100, 0.3)"},
+                    {"range": [30, 60], "color": "rgba(255, 200, 0, 0.3)"},
+                    {"range": [60, 80], "color": "rgba(150, 255, 100, 0.3)"},
+                    {"range": [80, 100], "color": "rgba(100, 255, 100, 0.3)"}
+                ],
+                "threshold": {
+                    "line": {"color": "red", "width": 4},
+                    "thickness": 0.75,
+                    "value": 75
+                }
+            }
+        )])
+        
+        fig_sprint3.update_layout(height=350, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_sprint3, use_container_width=True, key=f"sprint3_score_{sprint3_score:.1f}")
+    
+    with col2:
+        st.markdown("### 📊 Component Scores")
+        st.metric("Publication", f"{pub['readiness_score']:.0f}/100")
+        st.metric("Manufacturing", f"{mfg['scalability_score']:.0f}/100")
+        st.metric("Stability", f"{stab['stability_score']:.0f}/100")
+        st.metric("QC", f"{qc['total_qc_score']:.0f}/100")
+
 
 # Ensure all changes to 'd' are saved back to session state
 st.session_state.design = d

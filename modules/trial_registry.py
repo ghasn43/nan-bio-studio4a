@@ -420,3 +420,40 @@ def update_trial_status(trial_id: str, status: str, notes: str = "") -> bool:
     except Exception as e:
         logger.error(f"Error updating trial status: {e}")
         return False
+
+
+def delete_trial(trial_id: str) -> bool:
+    """
+    Delete a trial from the registry
+    
+    Args:
+        trial_id: Trial ID to delete
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    _init_db()
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Check if trial exists
+        cursor.execute("SELECT trial_id FROM trials WHERE trial_id = ?", (trial_id,))
+        if not cursor.fetchone():
+            logger.warning(f"Trial {trial_id} not found")
+            conn.close()
+            return False
+        
+        # Delete the trial
+        cursor.execute("DELETE FROM trials WHERE trial_id = ?", (trial_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Deleted trial {trial_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error deleting trial: {e}")
+        return False

@@ -1,1 +1,42 @@
-{}
+{
+  "token_admin_1773922968": {
+    "username": "admin",
+    "user_id": "admin",
+    "email": "",
+    "roles": [
+      "admin"
+    ],
+    "created_at": "2026-03-19T16:22:48.192295",
+    "last_activity": "2026-03-19T16:22:48.192295"
+  },
+  "token_admin_1773923081": {
+    "username": "admin",
+    "user_id": "admin",
+    "email": "",
+    "roles": [
+      "admin"
+    ],
+    "created_at": "2026-03-19T16:24:41.078013",
+    "last_activity": "2026-03-19T16:25:13.640139"
+  },
+  "token_admin_1773951817": {
+    "username": "admin",
+    "user_id": "admin",
+    "email": "",
+    "roles": [
+      "admin"
+    ],
+    "created_at": "2026-03-20T00:23:37.467141",
+    "last_activity": "2026-03-20T00:23:37.467141"
+  },
+  "token_admin_1773952983": {
+    "username": "admin",
+    "user_id": "admin",
+    "email": "",
+    "roles": [
+      "admin"
+    ],
+    "created_at": "2026-03-20T00:43:03.527590",
+    "last_activity": "2026-03-20T01:13:01.990774"
+  }
+}

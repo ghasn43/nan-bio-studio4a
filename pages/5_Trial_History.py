@@ -22,7 +22,7 @@ st.set_page_config(page_title="Trial History", layout="wide")
 # IMPORT TRIAL REGISTRY
 # ============================================================
 
-from modules.trial_registry import get_all_trials, get_recent_trials
+from modules.trial_registry import get_all_trials, get_recent_trials, delete_trial
 
 # ============================================================
 # SESSION RESTORATION & TIMEOUT CHECK
@@ -402,11 +402,15 @@ db_trials = get_all_trials()
 # Convert database trials to DataFrame format if they exist
 new_trials_data = []
 for trial in db_trials:
+    # Extract material from notes field (format: "Material: Lipid NP")
+    notes = trial.get("notes", "Material: Unknown")
+    material = notes.replace("Material: ", "") if "Material:" in notes else "Unknown"
+    
     new_trials_data.append({
         "Trial ID": trial.get("trial_id", "N/A"),
         "Date": trial.get("creation_timestamp", "N/A")[:10] if trial.get("creation_timestamp") else "N/A",
         "Disease": "HCC",
-        "Material": trial.get("trial_notes", "N/A"),  # We stored material info in notes
+        "Material": material,  # Extract from notes field
         "Size (nm)": trial.get("np_size_nm", "N/A"),
         "Status": "✅ Complete",
         "Delivery %": float(trial.get("export_path", "87.5")) if trial.get("export_path") else 87.5,
@@ -464,7 +468,90 @@ with tab1:
     
     df_trials = trials_data.copy()
     
-    st.dataframe(df_trials, use_container_width=True, hide_index=True)
+    # Sort by Trial ID to ensure proper order (T-001, T-002, ..., T-032, T-033)
+    try:
+        # Extract numeric part of Trial ID for proper sorting
+        df_trials['trial_num'] = df_trials['Trial ID'].str.extract('(\d+)').astype(int, errors='ignore')
+        df_trials = df_trials.sort_values('trial_num', ascending=True)
+        df_trials = df_trials.drop('trial_num', axis=1)
+    except Exception as e:
+        st.warning(f"Could not sort by Trial ID: {e}")
+    
+    # Mark only the last (most recent) trial as new
+    df_trials['is_new'] = False
+    if len(df_trials) > 0:
+        df_trials.iloc[-1, df_trials.columns.get_loc('is_new')] = True
+    
+    # Create custom table with delete buttons
+    st.markdown("""
+    <style>
+    .trial-table-header {
+        display: flex;
+        gap: 1rem;
+        font-weight: bold;
+        padding: 1rem;
+        background-color: #f0f0f0;
+        border-radius: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Display header row (sticky outside scroll container)
+    header_cols = st.columns([1.2, 1.2, 1, 1.2, 1, 1, 1.2, 1])
+    with header_cols[0]:
+        st.markdown("**Trial ID**")
+    with header_cols[1]:
+        st.markdown("**Date**")
+    with header_cols[2]:
+        st.markdown("**Disease**")
+    with header_cols[3]:
+        st.markdown("**Material**")
+    with header_cols[4]:
+        st.markdown("**Size (nm)**")
+    with header_cols[5]:
+        st.markdown("**Status**")
+    with header_cols[6]:
+        st.markdown("**Delivery %**")
+    with header_cols[7]:
+        st.markdown("**Score**")
+    
+    st.divider()
+    
+    # Create a properly styled dataframe for display
+    display_df = df_trials[["Trial ID", "Date", "Disease", "Material", "Size (nm)", "Status", "Delivery %", "Overall Score"]].copy()
+    display_df = display_df.reset_index(drop=True)
+    
+    # Function to style dataframe
+    def highlight_new_trial(row):
+        """Highlight the last row (newest trial) in red"""
+        if row.name == len(display_df) - 1:
+            return ['color: red; font-weight: bold;'] * len(row)
+        return [''] * len(row)
+    
+    # Display dataframe with height constraint for internal scrolling
+    st.dataframe(
+        display_df.style.apply(highlight_new_trial, axis=1),
+        use_container_width=True,
+        height=600  # Internal scrolling after 600px
+    )
+    
+    # Display delete buttons separately below scroll container
+    st.markdown("### Delete Trial")
+    
+    col_del1, col_del2 = st.columns([2, 1])
+    with col_del1:
+        trial_to_delete = st.selectbox("Select a trial to delete:", ["None"] + trial_ids, key="trial_delete_select")
+    with col_del2:
+        if st.button("❌ Delete Trial", use_container_width=True):
+            if trial_to_delete and trial_to_delete != "None":
+                if delete_trial(trial_to_delete):
+                    st.success(f"✓ Trial {trial_to_delete} deleted successfully")
+                    st.rerun()
+                else:
+                    st.error(f"✗ Failed to delete trial {trial_to_delete}")
+            else:
+                st.warning("Please select a trial to delete")
     
     st.divider()
     

@@ -377,12 +377,16 @@ def get_combined_stability_recommendation(material_name, drug_name):
     material_profile = get_material_stability_profile(material_name)
     drug_requirements = get_drug_stability_requirements(drug_name)
     
+    # Safely combine critical concerns, defaulting to empty list if None
+    material_concerns = material_profile.get("critical_concerns", []) or []
+    drug_concerns = drug_requirements.get("critical_concerns", []) or []
+    
     return {
         "optimal_pH": material_profile.get("optimal_pH"),
         "pH_range": material_profile.get("pH_stability_range"),
         "temperature": material_profile.get("temperature_stability"),
         "drug_pH_sensitivity": drug_requirements.get("pH_sensitivity"),
-        "critical_concerns": material_profile.get("critical_concerns") + drug_requirements.get("critical_concerns"),
+        "critical_concerns": material_concerns + drug_concerns,
         "required_tests": material_profile.get("stability_testing_required")
     }
 
